@@ -1,0 +1,37 @@
+# CMake build directories
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Executables
+*.exe
+*.obj
+*.o
+*.a
+
+# CLion / JetBrains IDE
+.idea/
+*.iml
+
+# CMake API Replies
+.cmake/api/
+
+# CMake logs and other files
+Testing/
+*.log
+*.rsp
+*.d
+*.bin
+*.yaml
+
+# Python __pycache__ and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore example and temp files if not source
+example.txt
+f.txt

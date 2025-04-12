@@ -1,2 +1,2 @@
 # QuestOptimizerX
-Quest Optimizer rewritten to C++
+Quest Optimizer rewritten in C++

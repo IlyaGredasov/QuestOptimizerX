@@ -10,7 +10,7 @@ parser.add_argument('-v', type=int, help='Number of vertexes', required=True)
 parser.add_argument('-vn', action="store_true", help='Do vertexes have names')
 parser.add_argument('-d', type=float, help='Density of graph (count of edges)', required=True)
 parser.add_argument('-q', type=int, help='Number of quest lines', required=True)
-parser.add_argument('-ql', type=int, help='Maximum length of quest line', required=True)
+parser.add_argument('-ql', type=int, help='Maximum length of quest line', required=False, default=10)
 parser.add_argument('-qn', action="store_true", help='Do quest lines have names')
 parser.add_argument('-s', type=int, help='Start vertex', required=False, default=-1)
 
@@ -23,7 +23,7 @@ with open("example.txt", "w", newline='') as f:
     f.write(f"Weighted:{linesep}")
     f.write(f"\t{args.w}{linesep}")
 
-    f.write(f"Vertex Count:{linesep}")
+    f.write(f"VertexCount:{linesep}")
     f.write(f"\t{args.v}{linesep}")
 
     if args.vn:

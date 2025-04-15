@@ -12,7 +12,7 @@ LineIter Parser::current_line{};
 GraphData Parser::graph_data{};
 
 void Parser::read_file(const std::string &file_path) {
-	std::cout << "Reading file " << file_path << std::endl;
+	std::cout << "Reading file " << file_path << ENDL;
 	const fs::path file_path_(file_path);
 	std::ifstream infile(file_path_);
 	if (!infile) {
@@ -36,7 +36,7 @@ std::vector<std::string> extract_words(const std::string &input) {
 }
 
 void Parser::parse_bidirectional() {
-	std::cout << "Parsing bidirectional" << std::endl;
+	std::cout << "Parsing bidirectional" << ENDL;
 	if (*current_line == "\tTrue") {
 		graph_data.bidirectional = true;
 	} else if (*current_line == "\tFalse") {
@@ -47,7 +47,7 @@ void Parser::parse_bidirectional() {
 }
 
 void Parser::parse_weighted() {
-	std::cout << "Parsing weighted" << std::endl;
+	std::cout << "Parsing weighted" << ENDL;
 	if (*current_line == "\tTrue") {
 		graph_data.weighted = true;
 	} else if (*current_line == "\tFalse") {
@@ -58,7 +58,7 @@ void Parser::parse_weighted() {
 }
 
 void Parser::parse_vertex_count() {
-	std::cout << "Parsing vertex count" << std::endl;
+	std::cout << "Parsing vertex count" << ENDL;
 	if (const auto value = current_line->substr(1); !value.empty() && std::ranges::all_of(value, isdigit)) {
 		const auto vertex_count = std::stoi(value);
 		if (vertex_count < 0) {
@@ -74,12 +74,11 @@ void Parser::parse_vertex_count() {
 }
 
 void Parser::parse_vertexes() {
-	std::cout << "Parsing vertexes" << std::endl;
+	std::cout << "Parsing vertexes" << ENDL;
 	if (!graph_data.vertex_count) {
 		throw InvalidFormat("<VertexCount> hasn't been defined yet");
 	}
 	for (int i = 0; current_line != lines.end() && !string_to_parse_func.contains(*current_line); ++i, ++current_line) {
-		std::cout << *current_line << std::endl;
 		const auto words = extract_words(*current_line);
 		if (const int index = std::stoi(words[0]); index < 0) {
 			throw InvalidFormat("Vertex index is less then 0");
@@ -92,9 +91,9 @@ void Parser::parse_vertexes() {
 }
 
 void Parser::parse_edges() {
-	std::cout << "Parsing edges" << std::endl;
+	std::cout << "Parsing edges" << ENDL;
 	for (int i = 0; current_line != lines.end() && !string_to_parse_func.contains(*current_line); ++i, ++current_line) {
-		const auto words = std::move(extract_words(*current_line));
+		const auto words = extract_words(*current_line);
 		if (words.size() != 2 && words.size() != 3) {
 			throw InvalidFormat("Invalid Format in <Edges> statement");
 		}
@@ -125,9 +124,9 @@ void Parser::parse_edges() {
 }
 
 void Parser::parse_quest_lines() {
-	std::cout << "Parsing quest lines" << std::endl;
+	std::cout << "Parsing quest lines" << ENDL;
 	for (int i = 0; current_line != lines.end() && !string_to_parse_func.contains(*current_line); ++i, ++current_line) {
-		std::vector<std::string> words = std::move(extract_words(*current_line));
+		std::vector<std::string> words = extract_words(*current_line);
 		auto vertexes_end_it = words.end();
 		if (!std::ranges::all_of(words[words.size() - 1], isdigit)) {
 			--vertexes_end_it;
@@ -148,11 +147,9 @@ void Parser::parse_quest_lines() {
 }
 
 void Parser::parse_start() {
-	std::cout << "Parsing start" << std::endl;
-	++current_line;
-	std::cout << *current_line << std::endl;
+	std::cout << "Parsing start" << ENDL;
 	if (const auto value = current_line->substr(1); !value.empty() && std::ranges::all_of(value, isdigit)) {
-		const auto start_index = std::stoi(value.substr(1));
+		const auto start_index = std::stoi(value);
 		if (!graph_data.vertex_count) {
 			throw InvalidFormat("<VertexCount> hasn't been defined yet");
 		}

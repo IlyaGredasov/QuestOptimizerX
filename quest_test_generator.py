@@ -26,13 +26,17 @@ with open("example.txt", "w", newline='') as f:
     f.write(f"VertexCount:{linesep}")
     f.write(f"\t{args.v}{linesep}")
 
+    if args.s != -1:
+        f.write(f"Start:{linesep}")
+        f.write(f"\t{args.s}{linesep}")
+
     if args.vn:
         f.write(f"Vertexes:{linesep}")
         for i in range(args.v):
             if random() < 0.5:
                 f.write(f"\t{i} specific_vertex_name{i}{linesep}")
 
-    all_edges = [(i, j) for i in range(args.v) for j in range(i + 1, args.v) if i != j]
+    all_edges = [(i, j) for i in range(args.v) for j in range(i + 1 if args.b else 0, args.v) if i != j]
     edges = sample(all_edges, int(args.d * len(all_edges)))
 
     f.write(f"Edges:{linesep}")
@@ -43,7 +47,3 @@ with open("example.txt", "w", newline='') as f:
     quest_lines = [[randint(0, args.v - 1) for _ in range(randint(1, args.ql))] for _ in range(args.q)]
     for i, quest_line in enumerate(quest_lines):
         f.write("\t" + " ".join(map(str, quest_line)) + (f" quest_name{i}" if args.qn else "") + linesep)
-
-    if args.s != -1:
-        f.write(f"Start:{linesep}")
-        f.write(f"\t{args.s}{linesep}")

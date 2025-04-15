@@ -6,9 +6,12 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 #include <numeric>
 #include <unordered_map>
 #include <thread>
+#include <ranges>
+#include <limits>
 
 #include <ext/pb_ds/assoc_container.hpp>
 #include <ext/pb_ds/tree_policy.hpp>
@@ -24,7 +27,7 @@ using OrderedSet = __gnu_pbds::tree<
 
 struct Path {
 	std::vector<int> vertexes{};
-	double length{};
+	double length = 0.0;
 
 	Path &operator+=(const Path &other) {
 		vertexes.insert(vertexes.end(), other.vertexes.begin(), other.vertexes.end());
@@ -40,31 +43,42 @@ public:
 	explicit QuestOptimizer(const GraphData &graph_data,
 							const bool fast_travel = false,
 							const unsigned num_threads = std::thread::hardware_concurrency(),
-							const int max_queue_size = 100000,
-							const double error_afford = 1.05) : graph_data(graph_data),
-																fast_travel(fast_travel),
-																num_threads(num_threads),
-																max_queue_size(max_queue_size),
-																error_afford(error_afford) {
+							const unsigned max_queue_size = 100000,
+							const double error_afford = 1.05,
+							const unsigned deep_of_search = 1,
+							const double queue_narrowness = 0.5) : graph_data(graph_data),
+																	fast_travel(fast_travel),
+																	num_threads(num_threads),
+																	max_queue_size(max_queue_size),
+																	error_afford(error_afford),
+																	deep_of_search(deep_of_search),
+																	queue_narrowness(queue_narrowness) {
 		minimum_quest_count = remain_quests(graph_data.quest_lines);
-		for (int i = 0; i < graph_data.vertex_count; ++i) {
-			best_path_for_start[i] = Path({},std::numeric_limits<double>::infinity());
-		}
+		std::ranges::for_each(
+			std::views::iota(0, graph_data.vertex_count),
+			[&](const int i) {
+				best_path_for_start[i] = Path({}, std::numeric_limits<double>::infinity());
+			}
+		);
 	};
 
 	void optimize();
 
 	Path get_best_path() const;
 
-	void print_quests_on_path() const;
+	void print_quests_on_path();
 
 private:
 	const GraphData &graph_data;
-	bool fast_travel;
-	unsigned num_threads;
-	int max_queue_size;
-	double error_afford;
-	int minimum_quest_count;
+	const bool fast_travel;
+	const unsigned num_threads;
+	const unsigned max_queue_size;
+	const double error_afford;
+	const unsigned deep_of_search;
+	std::condition_variable cv_queue;
+	unsigned sleeping_threads = 0;
+	std::atomic<unsigned> found_best_paths = 0;
+	std::atomic<int> minimum_quest_count;
 
 	struct PathState {
 		int current_index;
@@ -86,16 +100,15 @@ private:
 
 	OrderedSet<PathState> queue{};
 	std::unordered_map<int, Path> best_path_for_start{};
-	Path best_path = {{},std::numeric_limits<double>::infinity()};
+	Path best_path = {{}, std::numeric_limits<double>::infinity()};
 
 	std::mutex queue_mutex{};
 	std::atomic<bool> stop_event{false};
+	const double queue_narrowness;
 
 	std::vector<std::vector<Path> > get_floyd_paths() const;
 
 	void optimize_cycle();
-
-	void optimize_step();
 
 	void optimize_floyd();
 };

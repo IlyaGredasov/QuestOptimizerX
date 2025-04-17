@@ -1,9 +1,10 @@
 #include <parser.hpp>
-#include <filesystem>
+
 #include <algorithm>
-#include <sstream>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -33,6 +34,17 @@ std::vector<std::string> extract_words(const std::string &input) {
 		words.push_back(word);
 	}
 	return words;
+}
+
+void Parser::parse_fast_travel() {
+	std::cout << "Parsing fast_travel" << ENDL;
+	if (*current_line == "\tTrue") {
+		graph_data.fast_travel = true;
+	} else if (*current_line == "\tFalse") {
+		graph_data.fast_travel = false;
+	} else {
+		throw InvalidFormat("Invalid Format Of <FastTravel> statement");
+	}
 }
 
 void Parser::parse_bidirectional() {
@@ -75,18 +87,26 @@ void Parser::parse_vertex_count() {
 
 void Parser::parse_vertexes() {
 	std::cout << "Parsing vertexes" << ENDL;
-	if (!graph_data.vertex_count) {
+	if (!graph_data.vertex_count)
 		throw InvalidFormat("<VertexCount> hasn't been defined yet");
+
+	graph_data.vertex_names.resize(graph_data.vertex_count);
+	for (int i = 0; i < graph_data.vertex_count; ++i) {
+		graph_data.vertex_names[i] = "vertex_" + std::to_string(i);
 	}
+
 	for (int i = 0; current_line != lines.end() && !string_to_parse_func.contains(*current_line); ++i, ++current_line) {
 		const auto words = extract_words(*current_line);
-		if (const int index = std::stoi(words[0]); index < 0) {
-			throw InvalidFormat("Vertex index is less then 0");
+		const int index = std::stoi(words[0]);
+
+		if (index < 0 || index >= graph_data.vertex_count)
+			throw InvalidFormat("Vertex index is out of bounds");
+
+		if (words.size() > 1) {
+			graph_data.vertex_names[index] = words[1];
 		}
-		const std::string &vertex_name = words[1];
-		graph_data.vertex_names[i] = vertex_name;
-		graph_data.vertex_name_to_index[vertex_name] = i;
 	}
+
 	--current_line;
 }
 
@@ -128,18 +148,16 @@ void Parser::parse_quest_lines() {
 	for (int i = 0; current_line != lines.end() && !string_to_parse_func.contains(*current_line); ++i, ++current_line) {
 		std::vector<std::string> words = extract_words(*current_line);
 		auto vertexes_end_it = words.end();
-		if (!std::ranges::all_of(words[words.size() - 1], isdigit)) {
+		std::string name = "quest_" + std::to_string(i);
+		if (!std::ranges::all_of(words.back(), isdigit)) {
+			name = words.back();
 			--vertexes_end_it;
 		}
-		QuestLine ql;
+		QuestLine ql{.id = i, .name = std::move(name)};
 		for (auto it = words.begin(); it != vertexes_end_it; ++it) {
-			if (!std::ranges::all_of(*it, isdigit)) {
+			if (!std::ranges::all_of(*it, isdigit))
 				throw InvalidFormat("Invalid Format Of <QuestLine> statement");
-			}
-			ql.vertexes.emplace_back(std::stoi(*it));
-		}
-		if (vertexes_end_it != words.end()) {
-			graph_data.quest_line_name_to_index[words[words.size() - 1]] = i;
+			ql.vertexes.push_back(std::stoi(*it));
 		}
 		graph_data.quest_lines.push_back(std::move(ql));
 	}
@@ -163,6 +181,7 @@ void Parser::parse_start() {
 }
 
 const std::unordered_map<std::string, void(*)()> Parser::string_to_parse_func = {
+	{"FastTravel:", parse_fast_travel},
 	{"Bidirectional:", parse_bidirectional},
 	{"Weighted:", parse_weighted},
 	{"VertexCount:", parse_vertex_count},

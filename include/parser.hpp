@@ -7,34 +7,33 @@
 #define ENDL "\n"
 #endif
 
-
+#include <list>
 #include <stdexcept>
 #include <string>
-#include <vector>
 #include <unordered_map>
-#include <list>
+#include <vector>
 
 class InvalidFormat final : public std::runtime_error {
 public:
-	explicit InvalidFormat(const std::string &msg) : std::runtime_error(msg) {}
+	explicit InvalidFormat(const std::string &msg) : std::runtime_error(msg) {
+	}
 };
 
 struct QuestLine {
-	int id;
+	int id{};
 	std::string name;
 	std::list<int> vertexes;
 };
 
 struct GraphData {
 	std::vector<std::vector<double> > adj_list;
+	bool fast_travel;
 	bool weighted;
 	bool bidirectional;
 	int vertex_count;
 	int start_index = -1;
 	std::vector<std::string> vertex_names;
-	std::unordered_map<std::string, int> vertex_name_to_index;
 	std::vector<QuestLine> quest_lines;
-	std::unordered_map<std::string, int> quest_line_name_to_index;
 };
 
 using LineIter = std::vector<std::string>::iterator;
@@ -51,6 +50,8 @@ private:
 	static void read_file(const std::string &file_path);
 
 	static const std::unordered_map<std::string, void(*)()> string_to_parse_func;
+
+	static void parse_fast_travel();
 
 	static void parse_bidirectional();
 

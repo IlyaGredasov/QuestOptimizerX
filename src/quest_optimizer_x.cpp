@@ -1,7 +1,9 @@
 #include <quest_optimizer_x.hpp>
-#include <bits/random.h>
-#include <random>
+
 #include <iostream>
+#include <queue>
+#include <random>
+#include <windows.h>
 
 int remain_quests(const std::vector<QuestLine> &quest_lines) {
 	return std::accumulate(
@@ -13,55 +15,56 @@ int remain_quests(const std::vector<QuestLine> &quest_lines) {
 		});
 }
 
-std::vector<std::vector<Path> > QuestOptimizer::get_floyd_paths() const {
-	if (fast_travel) {
-		std::vector ways(
-			graph_data.adj_list.size(),
-			std::vector<Path>(graph_data.adj_list.size())
-		);
-		for (int i = 0; i < static_cast<int>(graph_data.adj_list.size()); ++i) {
-			for (int j = 0; j < static_cast<int>(graph_data.adj_list.size()); ++j) {
-				if (i!=j)
-					ways[i][j] = Path({i, j}, 1.0);
-			}
-		}
-		return ways;
-	}
-	auto path_matrix = graph_data.adj_list;
-	std::vector next_node(path_matrix.size(), std::vector<int>(path_matrix.size()));
-	for (size_t i = 0; i < path_matrix.size(); ++i)
-		for (size_t j = 0; j < path_matrix.size(); ++j)
-			next_node[i][j] = static_cast<int>(j);
-	for (size_t i2 = 0; i2 < path_matrix.size(); ++i2) {
-		for (size_t i1 = 0; i1 < path_matrix.size(); ++i1) {
-			for (size_t i3 = 0; i3 < path_matrix.size(); ++i3) {
-				if (path_matrix[i1][i2] + path_matrix[i2][i3] < path_matrix[i1][i3]) {
-					path_matrix[i1][i3] = path_matrix[i1][i2] + path_matrix[i2][i3];
-					next_node[i1][i3] = next_node[i1][i2];
-				}
-			}
-		}
-	}
-	auto ways = std::vector(
-		path_matrix.size(),
-		std::vector(path_matrix.size(), Path{{}, std::numeric_limits<double>::infinity()})
-	);
-	for (size_t i1 = 0; i1 < path_matrix.size(); ++i1) {
-		for (size_t i2 = 0; i2 < path_matrix.size(); ++i2) {
-			if (path_matrix[i1][i2] != std::numeric_limits<double>::infinity()) {
-				auto way = Path({}, 0);
-				size_t current = i1;
-				while (current != i2) {
-					way += Path({static_cast<int>(current)}, graph_data.adj_list[current][next_node[current][i2]]);
-					current = next_node[current][i2];
-				}
-				way.vertexes.emplace_back(current);
-				ways[i1][i2] = way;
+std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) const {
+	std::unordered_map<int, Path> best_paths;
+	std::priority_queue<std::pair<double, std::vector<int> >,
+		std::vector<std::pair<double, std::vector<int> > >,
+		std::greater<> > pq;
+
+	pq.emplace(0.0, std::vector{start});
+
+	while (!pq.empty()) {
+		auto [length, path] = pq.top();
+		pq.pop();
+		int current = path.back();
+
+		if (best_paths.contains(current) && best_paths[current].length <= length)
+			continue;
+
+		best_paths[current] = Path(path, length);
+
+		for (int i = 0; i < graph_data.vertex_count; ++i) {
+			if (const double w = graph_data.adj_list[current][i];
+				std::isfinite(w)) {
+				auto next_path = path;
+				next_path.push_back(i);
+				pq.emplace(length + w, next_path);
 			}
 		}
 	}
-	return ways;
+	return best_paths;
 }
+
+void logger_thread_func(const std::atomic<unsigned> &found_best_paths,
+								const std::atomic<unsigned> &minimum_quest_count,
+								const std::atomic<bool> &stop_event,
+								const OrderedSet<PathState> &queue,
+								std::mutex &queue_mutex,
+								const float interval_seconds) {
+	while (!stop_event.load(std::memory_order_relaxed)) {
+		std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
+		size_t queue_size = 0; {
+			std::lock_guard lock(queue_mutex);
+			queue_size = queue.size();
+		}
+		std::cout << "[Logger Thread] "
+				<< "found_best_paths: " << found_best_paths.load(std::memory_order_relaxed)
+				<< " minimum_quest_count: " << minimum_quest_count.load(std::memory_order_relaxed)
+				<< " queue_size: " << queue_size
+				<< ENDL;
+	}
+}
+
 
 void QuestOptimizer::optimize_cycle() {
 	std::mt19937 gen(std::random_device{}());
@@ -84,27 +87,26 @@ void QuestOptimizer::optimize_cycle() {
 			if (queue.empty()) {
 				continue;
 			}
-			std::uniform_int_distribution dist(0, static_cast<int>((queue.size() - 1) * queue_narrowness));
+			std::uniform_int_distribution<unsigned long long> dist(
+				0, (queue.size() - 1) * static_cast<unsigned long long>(queue_narrowness));
 			const auto it = queue.find_by_order(dist(gen));
 			current_state = *it;
 			queue.erase(it);
 		}
-
 		current_state.path.vertexes.emplace_back(current_state.current_index);
 		if (minimum_quest_count.load(std::memory_order_relaxed) == 0) {
 			minimum_quest_count.store(remain_quests(graph_data.quest_lines), std::memory_order_relaxed);
 		}
-		if (remain_quests(current_state.quests) <= std::max(minimum_quest_count.load(std::memory_order_relaxed), 1) *
+		if (remain_quests(current_state.quests) <= std::max(minimum_quest_count.load(std::memory_order_relaxed), 1u) *
 			error_afford) {
-			std::cout << "found_best_paths: " << found_best_paths.load(std::memory_order_relaxed) <<
-					" minimum_quest_count: "
-					<< minimum_quest_count.load(std::memory_order_relaxed) << " queue_size: " << queue.size() << ENDL;
 			cv_queue.notify_all();
 			for (auto it = current_state.quests.begin(); it != current_state.quests.end();) {
 				if (!it->vertexes.empty() && it->vertexes.front() == current_state.current_index)
 					it->vertexes.pop_front();
-				if (it->vertexes.empty()) it = current_state.quests.erase(it);
-				else ++it;
+				if (it->vertexes.empty())
+					it = current_state.quests.erase(it);
+				else
+					++it;
 			}
 			if (current_state.quests.empty()) {
 				{
@@ -114,13 +116,9 @@ void QuestOptimizer::optimize_cycle() {
 						current_best_path = current_state.path;
 					found_best_paths.fetch_add(1, std::memory_order_relaxed);
 				}
-				for (const auto t: current_state.path.vertexes) {
-					std::cout << t << ' ';
-				}
-				std::cout << ENDL;
 				minimum_quest_count.store(remain_quests(graph_data.quest_lines), std::memory_order_relaxed);
 				local_found = true;
-			} else if (fast_travel) {
+			} else if (graph_data.fast_travel) {
 				for (const auto &quest_line: current_state.quests) {
 					auto new_state = current_state;
 					new_state.current_index = quest_line.vertexes.front();
@@ -138,8 +136,8 @@ void QuestOptimizer::optimize_cycle() {
 						new_state.path.length += edge_weight;
 						std::lock_guard lock(queue_mutex);
 						if (queue.size() == max_queue_size) {
-							std::uniform_int_distribution dist(
-								0, static_cast<int>((queue.size() - 1) * queue_narrowness));
+							std::uniform_int_distribution<unsigned long long> dist(
+								0, (queue.size() - 1) * static_cast<unsigned long long>(queue_narrowness));
 							if (const auto it = queue.find_by_order(dist(gen));
 								remain_quests(it->quests) > remain_quests(new_state.quests)) {
 								queue.erase(it);
@@ -153,8 +151,8 @@ void QuestOptimizer::optimize_cycle() {
 			}
 		}
 		if (!local_found && found_best_paths.load(std::memory_order_relaxed) < deep_of_search) {
-			const int remaining = remain_quests(current_state.quests);
-			const int prev_min = minimum_quest_count.load(std::memory_order_relaxed);
+			const unsigned remaining = remain_quests(current_state.quests);
+			const unsigned prev_min = minimum_quest_count.load(std::memory_order_relaxed);
 			minimum_quest_count.store(std::min(prev_min, remaining), std::memory_order_relaxed);
 		}
 		if (found_best_paths.load(std::memory_order_relaxed) >= deep_of_search) {
@@ -164,52 +162,59 @@ void QuestOptimizer::optimize_cycle() {
 	}
 }
 
-void QuestOptimizer::optimize_floyd() {
-	std::cout << "Floyd optimization" << ENDL;
-	const auto floyd_ways = get_floyd_paths();
-	bool is_updated = true;
-	while (is_updated) {
-		is_updated = false;
-		auto new_best_path_for_start = best_path_for_start;
-		for (int floyd_start = 0; floyd_start < graph_data.vertex_count; ++floyd_start) {
-			for (const auto &[start_index, path]: best_path_for_start) {
-				const auto &[vertexes, length] = floyd_ways[floyd_start][start_index];
-				if (!std::isfinite(length)) continue;
-				if (const auto it = new_best_path_for_start.find(floyd_start);
-					it == new_best_path_for_start.end() || length + path.length < it->second.length) {
-					is_updated = true;
-					auto new_best_path = Path({}, 0);
-					new_best_path += floyd_ways[floyd_start][start_index];
-					new_best_path += path;
-					new_best_path_for_start[floyd_start] = new_best_path;
-				}
-			}
-		}
-		best_path_for_start = std::move(new_best_path_for_start);
-	}
-}
-
 void QuestOptimizer::optimize() {
 	for (int i = 0; i < graph_data.vertex_count; ++i) {
 		queue.insert(PathState(i, Path{{}, 0.0}, graph_data.quest_lines));
 	}
 	auto threads = std::vector<std::thread>{};
 	threads.reserve(num_threads);
+	std::thread logger_thread{};
+	if (std::abs(log_interval_seconds) >= std::numeric_limits<float>::epsilon()) {
+		logger_thread = std::thread(logger_thread_func,
+									std::ref(found_best_paths),
+									std::ref(minimum_quest_count),
+									std::ref(stop_event),
+									std::ref(queue),
+									std::ref(queue_mutex),
+									log_interval_seconds);
+	}
 	for (unsigned i = 0; i < num_threads; ++i) {
 		threads.emplace_back(&QuestOptimizer::optimize_cycle, this);
 	}
 	for (unsigned i = 0; i < num_threads; ++i) {
 		threads[i].join();
 	}
-	optimize_floyd();
+	if (std::abs(log_interval_seconds) >= std::numeric_limits<float>::epsilon()) {
+		logger_thread.join();
+	}
 	if (graph_data.start_index == -1) {
-		best_path = std::ranges::min_element(best_path_for_start
-											,
-											[](const auto &a, const auto &b) {
-												return a.second.vertexes.size() < b.second.vertexes.size();
-											})->second;
+		const auto it = std::ranges::min_element(best_path_for_start,
+												[](const auto &a, const auto &b) {
+													if (!std::isfinite(a.second.length)) return false;
+													if (!std::isfinite(b.second.length)) return true;
+													return a.second.vertexes.size() < b.second.vertexes.size();
+												});
+		if (it != best_path_for_start.end() && std::isfinite(it->second.length)) {
+			best_path = it->second;
+		} else {
+			std::cerr << "[ERROR] No valid path found in best_path_for_start." << ENDL;
+		}
 	} else {
-		best_path = best_path_for_start[graph_data.start_index];
+		std::cout << "Dijkstra optimization" << ENDL;
+		const auto start_paths = dijkstra_from(graph_data.start_index);
+		best_path = Path({}, std::numeric_limits<double>::infinity());
+		for (const auto &[via_vertex, coverage_path]: best_path_for_start) {
+			auto it = start_paths.find(via_vertex);
+			if (it == start_paths.end()) continue;
+
+			const Path &to_via = it->second;
+
+			if (const double total_length = to_via.length + coverage_path.length;
+				total_length < best_path.length) {
+				best_path = to_via;
+				best_path += coverage_path;
+			}
+		}
 	}
 }
 
@@ -217,26 +222,40 @@ Path QuestOptimizer::get_best_path() const {
 	return best_path;
 }
 
-void QuestOptimizer::print_quests_on_path() {
-	std::cout << best_path.length << ENDL;
-	std::vector<std::pair<int, QuestLine> > quest_lines_dict{};
-	for (size_t i = 0; i < graph_data.quest_lines.size(); ++i) {
-		quest_lines_dict.emplace_back(i, graph_data.quest_lines[i]);
-	}
-	for (const auto vertex_index: best_path.vertexes) {
-		std::cout << vertex_index << ':';
+bool print_quests_on_path(
+	const Path &path,
+	const std::vector<QuestLine> &quest_lines,
+	const std::vector<std::string> &vertex_names,
+	const bool use_vertex_names,
+	const bool use_quest_names
+) {
+	std::cout << path.length << ENDL;
+
+	std::vector<std::pair<int, QuestLine> > quest_lines_dict;
+	for (size_t i = 0; i < quest_lines.size(); ++i)
+		quest_lines_dict.emplace_back(i, quest_lines[i]);
+
+	for (const int vertex_index: path.vertexes) {
+		if (use_vertex_names && vertex_index < static_cast<int>(vertex_names.size()))
+			std::cout << vertex_names[vertex_index] << ":";
+		else
+			std::cout << vertex_index << ":";
+
 		for (auto it = quest_lines_dict.begin(); it != quest_lines_dict.end();) {
-			auto &[i, quest_line] = *it;
+			auto &[idx, quest_line] = *it;
 			while (!quest_line.vertexes.empty() && quest_line.vertexes.front() == vertex_index) {
-				std::cout << i << ' ';
+				if (use_quest_names)
+					std::cout << quest_line.name << ' ';
+				else
+					std::cout << idx << ' ';
 				quest_line.vertexes.pop_front();
 			}
-			if (quest_line.vertexes.empty()) {
+			if (quest_line.vertexes.empty())
 				it = quest_lines_dict.erase(it);
-			} else {
+			else
 				++it;
-			}
 		}
 		std::cout << ENDL;
 	}
+	return quest_lines_dict.empty();
 }

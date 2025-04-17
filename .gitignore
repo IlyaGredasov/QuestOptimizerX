@@ -4,9 +4,9 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+.cmake/
 
 # Executables
-*.exe
 *.obj
 *.o
 *.a
@@ -27,6 +27,7 @@ Testing/
 *.yaml
 
 # Python __pycache__ and compiled files
+.venv/
 __pycache__/
 *.pyc
 *.pyo

@@ -29,6 +29,7 @@ Testing/
 *.yaml
 
 # Python __pycache__ and compiled files
+.venv/
 __pycache__/
 *.pyc
 *.pyo

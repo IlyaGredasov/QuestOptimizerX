@@ -46,11 +46,11 @@ std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) con
 }
 
 void logger_thread_func(const std::atomic<unsigned> &found_best_paths,
-								const std::atomic<unsigned> &minimum_quest_count,
-								const std::atomic<bool> &stop_event,
-								const OrderedSet<PathState> &queue,
-								std::mutex &queue_mutex,
-								const float interval_seconds) {
+						const std::atomic<unsigned> &minimum_quest_count,
+						const std::atomic<bool> &stop_event,
+						const OrderedSet<PathState> &queue,
+						std::mutex &queue_mutex,
+						const float interval_seconds) {
 	while (!stop_event.load(std::memory_order_relaxed)) {
 		std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
 		size_t queue_size = 0; {
@@ -136,15 +136,20 @@ void QuestOptimizer::optimize_cycle() {
 						new_state.path.length += edge_weight;
 						std::lock_guard lock(queue_mutex);
 						if (queue.size() == max_queue_size) {
-							std::uniform_int_distribution<unsigned long long> dist(
-								0, (queue.size() - 1) * static_cast<unsigned long long>(queue_narrowness));
-							if (const auto it = queue.find_by_order(dist(gen));
-								remain_quests(it->quests) > remain_quests(new_state.quests)) {
-								queue.erase(it);
+							const auto worst_it = queue.find_by_order(queue.size() - 1);
+							const int rq_new = remain_quests(new_state.quests);
+							const int rq_worst = remain_quests(worst_it->quests);
+							if ((rq_new < rq_worst) ||
+								(rq_new == rq_worst && new_state.path.length < worst_it->path.length)) {
+								queue.erase(worst_it);
 								queue.insert(new_state);
+								if (sleeping_threads > 0)
+									cv_queue.notify_one();
 							}
 						} else {
 							queue.insert(new_state);
+							if (sleeping_threads > 0 || queue.empty())
+								cv_queue.notify_one();
 						}
 					}
 				}

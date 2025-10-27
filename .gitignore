@@ -35,3 +35,4 @@ __pycache__/
 
 # Ignore example and temp files if not source
 example.txt
+.clang-format

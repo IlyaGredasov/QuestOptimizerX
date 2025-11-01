@@ -1,7 +1,5 @@
 # CMake build directories
 cmake-build-*/
-!cmake-build-release-mingw/
-!cmake-build-release-mingw/bin/**
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake

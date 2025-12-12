@@ -1,5 +1,4 @@
-#ifndef QUEST_OPTIMIZER_X_HPP
-#define QUEST_OPTIMIZER_X_HPP
+#pragma once
 
 #include <parser.hpp>
 
@@ -115,5 +114,3 @@ private:
 
 	void optimize_cycle();
 };
-
-#endif //QUEST_OPTIMIZER_X_HPP

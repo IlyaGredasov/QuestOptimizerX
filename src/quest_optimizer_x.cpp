@@ -3,7 +3,6 @@
 #include <iostream>
 #include <queue>
 #include <random>
-#include <windows.h>
 
 int remain_quests(const std::vector<QuestLine> &quest_lines) {
 	return std::accumulate(
@@ -61,7 +60,7 @@ void logger_thread_func(const std::atomic<unsigned> &found_best_paths,
 				<< "found_best_paths: " << found_best_paths.load(std::memory_order_relaxed)
 				<< " minimum_quest_count: " << minimum_quest_count.load(std::memory_order_relaxed)
 				<< " queue_size: " << queue_size
-				<< ENDL;
+				<< "\n";
 	}
 }
 
@@ -202,10 +201,10 @@ void QuestOptimizer::optimize() {
 		if (it != best_path_for_start.end() && std::isfinite(it->second.length)) {
 			best_path = it->second;
 		} else {
-			std::cerr << "[ERROR] No valid path found in best_path_for_start." << ENDL;
+			std::cerr << "[ERROR] No valid path found in best_path_for_start.\n";
 		}
 	} else {
-		std::cout << "Dijkstra optimization" << ENDL;
+		std::cout << "Dijkstra optimization\n";
 		const auto start_paths = dijkstra_from(graph_data.start_index);
 		best_path = Path({}, std::numeric_limits<double>::infinity());
 		for (const auto &[via_vertex, coverage_path]: best_path_for_start) {
@@ -234,7 +233,7 @@ bool print_quests_on_path(
 	const bool use_vertex_names,
 	const bool use_quest_names
 ) {
-	std::cout << path.length << ENDL;
+	std::cout << path.length << "\n";
 
 	std::vector<std::pair<int, QuestLine> > quest_lines_dict;
 	for (size_t i = 0; i < quest_lines.size(); ++i)
@@ -260,7 +259,7 @@ bool print_quests_on_path(
 			else
 				++it;
 		}
-		std::cout << ENDL;
+		std::cout << "\n";
 	}
 	return quest_lines_dict.empty();
 }

@@ -6,6 +6,8 @@ cmake_install.cmake
 Makefile
 .cmake/
 
+*build*/
+
 # Executables
 *.obj
 *.o

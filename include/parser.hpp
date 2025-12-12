@@ -1,11 +1,4 @@
-#ifndef PARSER_HPP
-#define PARSER_HPP
-
-#ifdef _WIN32
-#define ENDL "\r\n"
-#else
-#define ENDL "\n"
-#endif
+#pragma once
 
 #include <list>
 #include <stdexcept>
@@ -67,5 +60,3 @@ private:
 
 	static void parse_start();
 };
-
-#endif //PARSER_HPP

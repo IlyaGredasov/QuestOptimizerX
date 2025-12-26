@@ -28,8 +28,7 @@ int main(const int argc, char **argv) {
 			std::stoi(args["--num_threads"]),
 			std::stoi(args["--max_queue_size"]),
 			std::stod(args["--error_afford"]),
-			std::stoi(args["--deep_of_search"]),
-			std::stod(args["--queue_narrowness"]),
+			std::stoi(args["--depth_of_search"]),
 			std::stof(args["--log_interval_seconds"])
 		);
 		optimizer.optimize();

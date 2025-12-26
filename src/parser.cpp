@@ -106,7 +106,6 @@ void Parser::parse_vertexes() {
 			graph_data.vertex_names[index] = words[1];
 		}
 	}
-
 	--current_line;
 }
 

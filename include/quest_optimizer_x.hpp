@@ -2,27 +2,16 @@
 
 #include <parser.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <limits>
 #include <mutex>
-#include <numeric>
 #include <ranges>
+#include <set>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-
-#include <ext/pb_ds/assoc_container.hpp>
-#include <ext/pb_ds/tree_policy.hpp>
-
-template<typename T>
-using OrderedSet = __gnu_pbds::tree<
-	T,
-	__gnu_pbds::null_type,
-	std::less<T>,
-	__gnu_pbds::rb_tree_tag,
-	__gnu_pbds::tree_order_statistics_node_update
->;
 
 struct Path {
 	std::vector<int> vertexes{};
@@ -68,14 +57,12 @@ public:
 							const unsigned num_threads = std::thread::hardware_concurrency(),
 							const unsigned max_queue_size = 100000,
 							const double error_afford = 1.05,
-							const unsigned deep_of_search = 1,
-							const double queue_narrowness = 0.5,
+							const unsigned depth_of_search = 1,
 							const float log_interval_seconds = 1.0) : graph_data(graph_data),
 																	num_threads(num_threads),
 																	max_queue_size(max_queue_size),
 																	error_afford(error_afford),
-																	deep_of_search(deep_of_search),
-																	queue_narrowness(queue_narrowness),
+																	depth_of_search(depth_of_search),
 																	log_interval_seconds(log_interval_seconds) {
 		minimum_quest_count = remain_quests(graph_data.quest_lines);
 		std::ranges::for_each(
@@ -95,8 +82,7 @@ private:
 	const unsigned num_threads;
 	const unsigned max_queue_size;
 	const double error_afford;
-	const unsigned deep_of_search;
-	const double queue_narrowness;
+	const unsigned depth_of_search;
 	const float log_interval_seconds;
 
 	std::atomic<unsigned> found_best_paths = 0;
@@ -104,7 +90,7 @@ private:
 	std::unordered_map<int, Path> best_path_for_start{};
 	Path best_path = {{}, std::numeric_limits<double>::infinity()};
 
-	OrderedSet<PathState> queue{};
+	std::set<PathState> queue{};
 	std::condition_variable cv_queue;
 	unsigned sleeping_threads = 0;
 	std::mutex queue_mutex{};

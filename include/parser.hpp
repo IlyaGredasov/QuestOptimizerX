@@ -8,8 +8,7 @@
 
 class InvalidFormat final : public std::runtime_error {
 public:
-	explicit InvalidFormat(const std::string &msg) : std::runtime_error(msg) {
-	}
+	explicit InvalidFormat(const std::string &msg) : std::runtime_error(msg) {}
 };
 
 struct QuestLine {
@@ -19,7 +18,7 @@ struct QuestLine {
 };
 
 struct GraphData {
-	std::vector<std::vector<double> > adj_list;
+	std::vector<std::vector<double>> adj_list;
 	bool fast_travel;
 	bool weighted;
 	bool bidirectional;

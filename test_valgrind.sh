@@ -13,11 +13,10 @@ run_args=(
   --num_threads 12
   --max_queue_size 1000
   --error_afford 1.2
-  --deep_of_search 50
-  --queue_narrowness 0.5
+  --depth_of_search 50
   --log_interval_seconds 1
   --disable_quest_line_names
-  --disable_vertex_name
+  --disable_vertex_names
 )
 
 echo "[1/2] Configure+build Debug (valgrind)"

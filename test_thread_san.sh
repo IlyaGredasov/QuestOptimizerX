@@ -13,11 +13,10 @@ run_args=(
   --num_threads 12
   --max_queue_size 1000
   --error_afford 1.2
-  --deep_of_search 50
-  --queue_narrowness 0.5
+  --depth_of_search 50
   --log_interval_seconds 1
   --disable_quest_line_names
-  --disable_vertex_name
+  --disable_vertex_names
 )
 
 echo "[1/2] Configure+build ThreadSanitizer"
@@ -27,6 +26,5 @@ cmake -S "${ROOT_DIR}" -B "${BUILD_DIR}" -DCMAKE_BUILD_TYPE=Debug \
 cmake --build "${BUILD_DIR}" -j
 
 echo "[2/2] ThreadSanitizer"
-TSAN_OPTIONS="halt_on_error=1 second_deadlock_stack=1 history_size=7" \
 setarch "$(uname -m)" -R \
-"${BIN}" "${run_args[@]}"
+  "${BIN}" "${run_args[@]}"

@@ -1,8 +1,10 @@
 #include <quest_optimizer_x.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <numeric>
 #include <queue>
-#include <random>
 
 int remain_quests(const std::vector<QuestLine> &quest_lines) {
 	return std::accumulate(
@@ -16,14 +18,14 @@ int remain_quests(const std::vector<QuestLine> &quest_lines) {
 
 std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) const {
 	std::unordered_map<int, Path> best_paths;
-	std::priority_queue<std::pair<double, std::vector<int> >,
-		std::vector<std::pair<double, std::vector<int> > >,
-		std::greater<> > pq;
+	std::priority_queue<std::pair<double, std::vector<int>>,
+		std::vector<std::pair<double, std::vector<int>>>,
+		std::greater<>> pq;
 
 	pq.emplace(0.0, std::vector{start});
 
 	while (!pq.empty()) {
-		auto [length, path] = pq.top();
+		const auto [length, path] = pq.top();
 		pq.pop();
 		int current = path.back();
 
@@ -44,12 +46,9 @@ std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) con
 	return best_paths;
 }
 
-void logger_thread_func(const std::atomic<unsigned> &found_best_paths,
-						const std::atomic<unsigned> &minimum_quest_count,
-						const std::atomic<bool> &stop_event,
-						const OrderedSet<PathState> &queue,
-						std::mutex &queue_mutex,
-						const float interval_seconds) {
+void logger_thread_func(const std::atomic<unsigned> &found_best_paths, const std::atomic<unsigned> &minimum_quest_count,
+						const std::atomic<bool> &stop_event, const std::set<PathState> &queue,
+						std::mutex &queue_mutex, const float interval_seconds) {
 	while (!stop_event.load(std::memory_order_relaxed)) {
 		std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
 		size_t queue_size = 0; {
@@ -66,7 +65,6 @@ void logger_thread_func(const std::atomic<unsigned> &found_best_paths,
 
 
 void QuestOptimizer::optimize_cycle() {
-	std::mt19937 gen(std::random_device{}());
 	bool local_found = false;
 	while (!stop_event.load(std::memory_order_relaxed)) {
 		PathState current_state; {
@@ -86,9 +84,7 @@ void QuestOptimizer::optimize_cycle() {
 			if (queue.empty()) {
 				continue;
 			}
-			std::uniform_int_distribution<unsigned long long> dist(
-				0, (queue.size() - 1) * static_cast<unsigned long long>(queue_narrowness));
-			const auto it = queue.find_by_order(dist(gen));
+			const auto it = queue.begin();
 			current_state = *it;
 			queue.erase(it);
 		}
@@ -122,7 +118,6 @@ void QuestOptimizer::optimize_cycle() {
 					auto new_state = current_state;
 					new_state.current_index = quest_line.vertexes.front();
 					new_state.path.length += 1;
-
 					std::lock_guard lock(queue_mutex);
 					queue.insert(new_state);
 				}
@@ -135,10 +130,10 @@ void QuestOptimizer::optimize_cycle() {
 						new_state.path.length += edge_weight;
 						std::lock_guard lock(queue_mutex);
 						if (queue.size() == max_queue_size) {
-							const auto worst_it = queue.find_by_order(queue.size() - 1);
+							const auto worst_it = std::prev(queue.end());
 							const int rq_new = remain_quests(new_state.quests);
 							const int rq_worst = remain_quests(worst_it->quests);
-							if ((rq_new < rq_worst) ||
+							if (rq_new < rq_worst ||
 								(rq_new == rq_worst && new_state.path.length < worst_it->path.length)) {
 								queue.erase(worst_it);
 								queue.insert(new_state);
@@ -154,12 +149,12 @@ void QuestOptimizer::optimize_cycle() {
 				}
 			}
 		}
-		if (!local_found && found_best_paths.load(std::memory_order_relaxed) < deep_of_search) {
+		if (!local_found && found_best_paths.load(std::memory_order_relaxed) < depth_of_search) {
 			const unsigned remaining = remain_quests(current_state.quests);
 			const unsigned prev_min = minimum_quest_count.load(std::memory_order_relaxed);
 			minimum_quest_count.store(std::min(prev_min, remaining), std::memory_order_relaxed);
 		}
-		if (found_best_paths.load(std::memory_order_relaxed) >= deep_of_search) {
+		if (found_best_paths.load(std::memory_order_relaxed) >= depth_of_search) {
 			stop_event.store(true, std::memory_order_relaxed);
 			cv_queue.notify_all();
 		}
@@ -235,7 +230,7 @@ bool print_quests_on_path(
 ) {
 	std::cout << path.length << "\n";
 
-	std::vector<std::pair<int, QuestLine> > quest_lines_dict;
+	std::vector<std::pair<int, QuestLine>> quest_lines_dict;
 	for (size_t i = 0; i < quest_lines.size(); ++i)
 		quest_lines_dict.emplace_back(i, quest_lines[i]);
 

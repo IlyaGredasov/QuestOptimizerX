@@ -98,5 +98,8 @@ private:
 
 	std::unordered_map<int, Path> dijkstra_from(int start) const;
 
+	void update_state(PathState &current_state, bool &local_found);
+	void update_state_fast_travel(PathState &current_state, bool &local_found);
+
 	void optimize_cycle();
 };

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <list>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -14,7 +13,25 @@ public:
 struct QuestLine {
 	int id{};
 	std::string name;
-	std::list<int> vertexes;
+	std::vector<int> vertexes;
+	size_t next_vertex = 0;
+
+	[[nodiscard]] bool empty() const {
+		return next_vertex >= vertexes.size();
+	}
+
+	[[nodiscard]] int front() const {
+		return vertexes[next_vertex];
+	}
+
+	void pop_front() {
+		if (!empty())
+			++next_vertex;
+	}
+
+	[[nodiscard]] size_t remaining() const {
+		return vertexes.size() - next_vertex;
+	}
 };
 
 struct GraphData {

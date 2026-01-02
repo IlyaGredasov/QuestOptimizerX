@@ -1,13 +1,13 @@
-cmake_minimum_required(VERSION 3.28)
-project(QuestOptimizerX)
+cmake_minimum_required(VERSION 3.10)
+project(quest_optimizer_x)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
 file(GLOB SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
-add_executable(QuestOptimizerX ${SOURCES})
+include_directories(${CMAKE_SOURCE_DIR}/include)
+add_executable(quest_optimizer_x ${SOURCES})
 
 if (WIN32)
     get_filename_component(COMPILER_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)

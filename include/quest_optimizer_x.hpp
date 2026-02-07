@@ -1,11 +1,12 @@
 #pragma once
 
-#include <parser.hpp>
+#include "parser.hpp"
 
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <limits>
+#include <memory_resource>
 #include <mutex>
 #include <ranges>
 #include <set>
@@ -14,92 +15,83 @@
 #include <vector>
 
 struct Path {
-	std::vector<int> vertexes{};
-	double length = 0.0;
+    std::vector<int> vertexes{};
+    double length = 0.0;
 
-	Path &operator+=(const Path &other) {
-		vertexes.insert(vertexes.end(), other.vertexes.begin(), other.vertexes.end());
-		length += other.length;
-		return *this;
-	}
+    Path& operator+=(const Path& other) {
+        vertexes.insert(vertexes.end(), other.vertexes.begin(), other.vertexes.end());
+        length += other.length;
+        return *this;
+    }
 };
 
-int remain_quests(const std::vector<QuestLine> &quest_lines);
+int remain_quests(std::vector<QuestLine>::const_iterator first, std::vector<QuestLine>::const_iterator last);
+int remain_quests(const std::vector<QuestLine>& quest_lines);
 
-bool print_quests_on_path(
-	const Path &path,
-	const std::vector<QuestLine> &quest_lines,
-	const std::vector<std::string> &vertex_names,
-	bool use_vertex_names,
-	bool use_quest_names
-);
+bool print_quests_on_path(const Path& path, const std::vector<QuestLine>& quest_lines,
+    const std::vector<std::string>& vertex_names, bool use_vertex_names, bool use_quest_names);
 
 struct PathState {
-	int current_index;
-	Path path;
-	std::vector<QuestLine> quests;
+    int current_index;
+    Path path;
+    std::vector<QuestLine> quests;
 
-	bool operator<(const PathState &other) const {
-		const auto first = remain_quests(quests);
-		const auto second = remain_quests(other.quests);
-		if (first != second) {
-			return first < second;
-		}
-		if (path.length != other.path.length)
-			return path.length < other.path.length;
-		return current_index < other.current_index;
-	}
+    bool operator<(const PathState& other) const {
+        const auto first = remain_quests(quests.begin(), quests.end());
+        const auto second = remain_quests(other.quests.begin(), other.quests.end());
+        if (first != second) {
+            return first < second;
+        }
+        if (path.length != other.path.length)
+            return path.length < other.path.length;
+        return current_index < other.current_index;
+    }
 };
 
 class QuestOptimizer final {
 public:
-	explicit QuestOptimizer(const GraphData &graph_data,
-							const unsigned num_threads = std::thread::hardware_concurrency(),
-							const unsigned max_queue_size = 100000,
-							const double error_afford = 1.05,
-							const unsigned depth_of_search = 1,
-							const float log_interval_seconds = 1.0) : graph_data(graph_data),
-																	num_threads(num_threads),
-																	max_queue_size(max_queue_size),
-																	error_afford(error_afford),
-																	depth_of_search(depth_of_search),
-																	log_interval_seconds(log_interval_seconds) {
-		minimum_quest_count = remain_quests(graph_data.quest_lines);
-		std::ranges::for_each(
-			std::views::iota(0, graph_data.vertex_count),
-			[&](const int i) {
-				best_path_for_start[i] = Path({}, std::numeric_limits<double>::infinity());
-			}
-		);
-	};
+    explicit QuestOptimizer(const GraphData& graph_data,
+        const unsigned num_threads = std::thread::hardware_concurrency(), const unsigned max_queue_size = 100000,
+        const double error_afford = 1.05, const unsigned depth_of_search = 1, const float log_interval_seconds = 1.0)
+        : graph_data(graph_data),
+          num_threads(num_threads),
+          max_queue_size(max_queue_size),
+          error_afford(error_afford),
+          depth_of_search(depth_of_search),
+          log_interval_seconds(log_interval_seconds) {
+        minimum_quest_count = remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end());
+        std::ranges::for_each(std::views::iota(0, graph_data.vertex_count),
+            [&](const int i) { best_path_for_start[i] = Path({}, std::numeric_limits<double>::infinity()); });
+    };
 
-	void optimize();
+    void optimize();
 
-	Path get_best_path() const;
+    Path get_best_path() const;
 
 private:
-	const GraphData &graph_data;
-	const unsigned num_threads;
-	const unsigned max_queue_size;
-	const double error_afford;
-	const unsigned depth_of_search;
-	const float log_interval_seconds;
+    const GraphData& graph_data;
+    const unsigned num_threads;
+    const unsigned max_queue_size;
+    const double error_afford;
+    const unsigned depth_of_search;
+    const float log_interval_seconds;
 
-	std::atomic<unsigned> found_best_paths = 0;
-	std::atomic<unsigned> minimum_quest_count;
-	std::unordered_map<int, Path> best_path_for_start{};
-	Path best_path = {{}, std::numeric_limits<double>::infinity()};
+    std::atomic<unsigned> found_best_paths = 0;
+    std::atomic<unsigned> minimum_quest_count;
+    std::unordered_map<int, Path> best_path_for_start;
+    Path best_path = {{}, std::numeric_limits<double>::infinity()};
 
-	std::set<PathState> queue{};
-	std::condition_variable cv_queue;
-	unsigned sleeping_threads = 0;
-	std::mutex queue_mutex{};
-	std::atomic<bool> stop_event{false};
+    std::pmr::synchronized_pool_resource queue_pool{};
+    std::pmr::set<PathState> queue{&queue_pool};
+    std::condition_variable cv_queue;
+    unsigned sleeping_threads = 0;
+    std::mutex queue_mutex;
+    std::atomic<bool> stop_event{false};
 
-	std::unordered_map<int, Path> dijkstra_from(int start) const;
+    std::unordered_map<int, Path> dijkstra_from(int start) const;
 
-	void update_state(PathState &current_state, bool &local_found);
-	void update_state_fast_travel(PathState &current_state, bool &local_found);
+    void update_state(PathState& current_state, bool& local_found);
+    void update_state_fast_travel(PathState& current_state, bool& local_found);
 
-	void optimize_cycle();
+    void optimize_cycle();
 };

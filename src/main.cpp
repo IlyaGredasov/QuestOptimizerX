@@ -28,7 +28,7 @@ int main(const int argc, char** argv) {
             std::stof(args["--log_interval_seconds"]));
         optimizer.optimize();
         print_quests_on_path(optimizer.get_best_path(), graph_data.quest_lines, graph_data.vertex_names,
-            !args.contains("--disable_vertex_names"), !args.contains("--disable_quest_line_names"));
+            args.contains("--enable_vertex_names"), args.contains("--enable_quest_line_names"));
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] " << e.what() << '\n';
         return 1;

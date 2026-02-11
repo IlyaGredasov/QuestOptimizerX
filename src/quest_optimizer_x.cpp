@@ -51,20 +51,20 @@ void logger_thread_func(const std::atomic<unsigned>& found_best_paths, const std
             queue_size = queue.size();
         }
         std::cout << "[Logger Thread] "
-                  << "found_best_paths: " << found_best_paths.load(std::memory_order::relaxed)
-                  << " minimum_quest_count: " << minimum_quest_count.load(std::memory_order::relaxed)
+                  << "found_best_paths: " << found_best_paths.load(std::memory_order::acquire)
+                  << " minimum_quest_count: " << minimum_quest_count.load(std::memory_order::acquire)
                   << " queue_size: " << queue_size << "\n";
     }
 }
 
 void QuestOptimizer::update_state(PathState& current_state, bool& local_found) {
     current_state.path.vertexes.emplace_back(current_state.current_index);
-    if (minimum_quest_count.load(std::memory_order::relaxed) == 0) {
+    if (minimum_quest_count.load(std::memory_order::acquire) == 0) {
         minimum_quest_count.store(remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end()),
-            std::memory_order::relaxed);
+            std::memory_order::release);
     }
     if (remain_quests(current_state.quests.begin(), current_state.quests.end()) <=
-        std::max(minimum_quest_count.load(std::memory_order::relaxed), 1u) * error_afford) {
+        std::max(minimum_quest_count.load(std::memory_order::acquire), 1u) * error_afford) {
         cv_queue.notify_all();
         for (auto it = current_state.quests.begin(); it != current_state.quests.end();) {
             if (!it->empty() && it->front() == current_state.current_index)
@@ -80,10 +80,10 @@ void QuestOptimizer::update_state(PathState& current_state, bool& local_found) {
                 if (auto& current_best_path = best_path_for_start[current_state.path.vertexes[0]];
                     current_best_path.vertexes.empty() || current_best_path.length > current_state.path.length)
                     current_best_path = current_state.path;
-                found_best_paths.fetch_add(1, std::memory_order::relaxed);
+                found_best_paths.fetch_add(1, std::memory_order::release);
             }
             minimum_quest_count.store(remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end()),
-                std::memory_order::relaxed);
+                std::memory_order::release);
             local_found = true;
         } else {
             for (int i = 0; i < graph_data.vertex_count; ++i) {
@@ -117,12 +117,12 @@ void QuestOptimizer::update_state(PathState& current_state, bool& local_found) {
 
 void QuestOptimizer::update_state_fast_travel(PathState& current_state, bool& local_found) {
     current_state.path.vertexes.emplace_back(current_state.current_index);
-    if (minimum_quest_count.load(std::memory_order::relaxed) == 0) {
+    if (minimum_quest_count.load(std::memory_order::acquire) == 0) {
         minimum_quest_count.store(remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end()),
-            std::memory_order::relaxed);
+            std::memory_order::release);
     }
     if (remain_quests(current_state.quests.begin(), current_state.quests.end()) <=
-        std::max(minimum_quest_count.load(std::memory_order::relaxed), 1u) * error_afford) {
+        std::max(minimum_quest_count.load(std::memory_order::acquire), 1u) * error_afford) {
         cv_queue.notify_all();
         for (auto it = current_state.quests.begin(); it != current_state.quests.end();) {
             if (!it->empty() && it->front() == current_state.current_index)
@@ -138,10 +138,10 @@ void QuestOptimizer::update_state_fast_travel(PathState& current_state, bool& lo
                 if (auto& current_best_path = best_path_for_start[current_state.path.vertexes[0]];
                     current_best_path.vertexes.empty() || current_best_path.length > current_state.path.length)
                     current_best_path = current_state.path;
-                found_best_paths.fetch_add(1, std::memory_order::relaxed);
+                found_best_paths.fetch_add(1, std::memory_order::release);
             }
             minimum_quest_count.store(remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end()),
-                std::memory_order::relaxed);
+                std::memory_order::release);
             local_found = true;
         } else {
             for (const auto& quest_line : current_state.quests) {
@@ -186,12 +186,12 @@ void QuestOptimizer::optimize_cycle() {
             update_state(current_state, local_found);
         }
 
-        if (!local_found && found_best_paths.load(std::memory_order::relaxed) < depth_of_search) {
+        if (!local_found && found_best_paths.load(std::memory_order::acquire) < depth_of_search) {
             const unsigned remaining = remain_quests(current_state.quests.begin(), current_state.quests.end());
-            const unsigned prev_min = minimum_quest_count.load(std::memory_order::relaxed);
-            minimum_quest_count.store(std::min(prev_min, remaining), std::memory_order::relaxed);
+            const unsigned prev_min = minimum_quest_count.load(std::memory_order::acquire);
+            minimum_quest_count.store(std::min(prev_min, remaining), std::memory_order::release);
         }
-        if (found_best_paths.load(std::memory_order::relaxed) >= depth_of_search) {
+        if (found_best_paths.load(std::memory_order::acquire) >= depth_of_search) {
             stop_event.store(true, std::memory_order::release);
             cv_queue.notify_all();
         }

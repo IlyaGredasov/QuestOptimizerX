@@ -1,11 +1,8 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(pwd)"
 BUILD_DIR="${ROOT_DIR}/thread-san-build"
 
-BIN_NAME="QuestOptimizerX"
-BIN="${BUILD_DIR}/bin/${BIN_NAME}"
+BIN_NAME="quest_optimizer_x"
+BIN="${BUILD_DIR}/${BIN_NAME}"
 INPUT_FILE="${ROOT_DIR}/example.txt"
 
 run_args=(

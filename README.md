@@ -51,7 +51,7 @@ visit 7th vertex, 12th vertex ... (exactly in such order) to complete this quest
 
 Now let's try to find best
 
-run ```cmake-build-release-mingw\bin\QuestOptimizerX.exe --file "path\to\example.txt" --num_threads 12 --max_queue_size 10000 --error_afford 1.1 --depth_of_search 200 --log_interval_seconds 0.1 --disable_vertex_names --disable_quest_line_names```
+run ```cmake-build-release-mingw\bin\QuestOptimizerX.exe --file "path\to\example.txt" --num_threads 12 --max_queue_size 10000 --error_afford 1.1 --depth_of_search 200 --log_interval_seconds 0.1```
 
 ### Options:
 - ```num_threads``` - count of using threads

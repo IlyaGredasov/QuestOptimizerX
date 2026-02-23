@@ -26,7 +26,6 @@ struct Path {
 };
 
 int remain_quests(std::vector<QuestLine>::const_iterator first, std::vector<QuestLine>::const_iterator last);
-int remain_quests(const std::vector<QuestLine>& quest_lines);
 
 bool print_quests_on_path(const Path& path, const std::vector<QuestLine>& quest_lines,
     const std::vector<std::string>& vertex_names, bool use_vertex_names, bool use_quest_names);
@@ -90,8 +89,8 @@ private:
 
     std::unordered_map<int, Path> dijkstra_from(int start) const;
 
-    void update_state(PathState& current_state, bool& local_found);
-    void update_state_fast_travel(PathState& current_state, bool& local_found);
+    bool update_state(PathState& current_state);
+    bool update_state_fast_travel(PathState& current_state);
 
     void optimize_cycle();
 };

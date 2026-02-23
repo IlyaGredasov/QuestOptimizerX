@@ -1,5 +1,4 @@
 #include "quest_optimizer_x.hpp"
-
 #include <iostream>
 
 std::unordered_map<std::string, std::string> parse_args(const int argc, char** argv) {

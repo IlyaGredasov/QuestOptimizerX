@@ -32,10 +32,10 @@ std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) con
         for (int i = 0; i < graph_data.vertex_count; ++i) {
             if (const double w = graph_data.adj_list[current][i]; std::isfinite(w)) {
                 auto next_path = path;
-                next_path.push_back(i);
-                pq.emplace(length + w, next_path);
+                next_path.emplace_back(i);
+                pq.emplace(length + w, std::move(next_path));
             }
-        }
+        } 
     }
     return best_paths;
 }
@@ -57,7 +57,8 @@ void logger_thread_func(const std::atomic<unsigned>& found_best_paths, const std
     }
 }
 
-void QuestOptimizer::update_state(PathState& current_state, bool& local_found) {
+bool QuestOptimizer::update_state(PathState& current_state) {
+    bool local_found = false;
     current_state.path.vertexes.emplace_back(current_state.current_index);
     if (minimum_quest_count.load(std::memory_order::acquire) == 0) {
         minimum_quest_count.store(remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end()),
@@ -100,12 +101,12 @@ void QuestOptimizer::update_state(PathState& current_state, bool& local_found) {
                         if (rq_new < rq_worst ||
                             (rq_new == rq_worst && new_state.path.length < worst_it->path.length)) {
                             queue.erase(worst_it);
-                            queue.insert(new_state);
+                            queue.insert(std::move(new_state));
                             if (sleeping_threads > 0)
                                 cv_queue.notify_one();
                         }
                     } else {
-                        queue.insert(new_state);
+                        queue.insert(std::move(new_state));
                         if (sleeping_threads > 0 || queue.empty())
                             cv_queue.notify_one();
                     }
@@ -113,9 +114,11 @@ void QuestOptimizer::update_state(PathState& current_state, bool& local_found) {
             }
         }
     }
+    return local_found;
 }
 
-void QuestOptimizer::update_state_fast_travel(PathState& current_state, bool& local_found) {
+bool QuestOptimizer::update_state_fast_travel(PathState& current_state) {
+    bool local_found = false;
     current_state.path.vertexes.emplace_back(current_state.current_index);
     if (minimum_quest_count.load(std::memory_order::acquire) == 0) {
         minimum_quest_count.store(remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end()),
@@ -149,10 +152,11 @@ void QuestOptimizer::update_state_fast_travel(PathState& current_state, bool& lo
                 new_state.current_index = quest_line.front();
                 new_state.path.length += 1;
                 const std::scoped_lock lock(queue_mutex);
-                queue.insert(new_state);
+                queue.insert(std::move(new_state));
             }
         }
     }
+    return local_found;
 }
 
 void QuestOptimizer::optimize_cycle() {
@@ -180,11 +184,7 @@ void QuestOptimizer::optimize_cycle() {
             queue.erase(it);
         }
 
-        if (use_fast_travel) {
-            update_state_fast_travel(current_state, local_found);
-        } else {
-            update_state(current_state, local_found);
-        }
+        local_found = use_fast_travel ? update_state_fast_travel(current_state) : update_state(current_state);
 
         if (!local_found && found_best_paths.load(std::memory_order::acquire) < depth_of_search) {
             const unsigned remaining = remain_quests(current_state.quests.begin(), current_state.quests.end());

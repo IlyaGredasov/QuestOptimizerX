@@ -35,7 +35,7 @@ std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) con
                 next_path.emplace_back(i);
                 pq.emplace(length + w, std::move(next_path));
             }
-        } 
+        }
     }
     return best_paths;
 }

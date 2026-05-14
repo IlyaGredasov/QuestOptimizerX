@@ -1,9 +1,7 @@
 import cv2
-import sys
 import math
 import argparse
 from pathlib import Path
-import numpy as np
 from ultralytics import YOLO
 
 rectangles = []
@@ -17,9 +15,11 @@ max_scale = 5.0
 original_image = None
 image_path = None
 
+
 def point_in_rect(x, y, rect):
     x1, y1, x2, y2 = rect
     return x1 <= x <= x2 and y1 <= y <= y2
+
 
 def mouse_callback(event, x, y, flags, param):
     global drawing, start_point, current_rect, rectangles
@@ -50,13 +50,23 @@ def mouse_callback(event, x, y, flags, param):
                 del rectangles[i]
                 break
 
+
 def draw_all(img, annotate_ids=False):
     for idx, rect in enumerate(rectangles):
         x1, y1, x2, y2 = rect
         cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
         if annotate_ids:
             cx = int((x1 + x2) / 2)
-            cv2.putText(img, str(idx), (cx, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv2.putText(
+                img,
+                str(idx),
+                (cx, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2,
+            )
+
 
 def generate_outputs(save_dir: Path, base_name: str, alpha: float):
     h, w = original_image.shape[:2]
@@ -89,11 +99,11 @@ def generate_outputs(save_dir: Path, base_name: str, alpha: float):
         "Bidirectional:\n\tTrue",
         "Weighted:\n\tTrue",
         f"VertexCount:\n\t{n}",
-        "Edges:"
+        "Edges:",
     ]
     for i, j, dist in sorted(threshold_edges):
         lines.append(f"\t{i} {j} {dist:.2f}")
-    
+
     lines.append("QuestLines:")
     for i in range(n):
         lines.append(f"\t{i}")
@@ -107,6 +117,7 @@ def generate_outputs(save_dir: Path, base_name: str, alpha: float):
 
     print(f"Saved: {graph_file.name}, {base_name}_labeled.png")
 
+
 def run_detection():
     global rectangles, original_image
     print("Running YOLOv8 detection...")
@@ -118,12 +129,18 @@ def run_detection():
         rectangles.append((x1, y1, x2, y2))
     print(f"Added {len(results.boxes)} rectangles from model")
 
+
 def main():
     global original_image, scale, image_path
 
     parser = argparse.ArgumentParser()
     parser.add_argument("image_path", type=Path, help="Path to image file")
-    parser.add_argument("--alpha", type=float, default=1.5, help="Relative edge distance threshold multiplier")
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=1.5,
+        help="Relative edge distance threshold multiplier",
+    )
     args = parser.parse_args()
 
     image_path = args.image_path
@@ -151,22 +168,29 @@ def main():
 
         if current_rect:
             x1, y1, x2, y2 = current_rect
-            cv2.rectangle(display, (int(x1 * scale), int(y1 * scale)), (int(x2 * scale), int(y2 * scale)), (0, 0, 255), 1)
+            cv2.rectangle(
+                display,
+                (int(x1 * scale), int(y1 * scale)),
+                (int(x2 * scale), int(y2 * scale)),
+                (0, 0, 255),
+                1,
+            )
 
         cv2.imshow("Annotator", display)
         key = cv2.waitKey(10) & 0xFF
 
-        if key in [ord('+'), ord('=')]:
+        if key in [ord("+"), ord("=")]:
             scale = min(max_scale, scale + scale_step)
             cv2.resizeWindow("Annotator", int(w * scale), int(h * scale))
-        elif key in [ord('-'), ord('_')]:
+        elif key in [ord("-"), ord("_")]:
             scale = max(min_scale, scale - scale_step)
             cv2.resizeWindow("Annotator", int(w * scale), int(h * scale))
-        elif key == ord('d'):
+        elif key == ord("d"):
             run_detection()
 
     cv2.destroyAllWindows()
     generate_outputs(save_dir, base_name, alpha=args.alpha)
+
 
 if __name__ == "__main__":
     main()

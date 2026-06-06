@@ -21,6 +21,7 @@ cmake --build "${BUILD_DIR}" -j
 echo "[2/2] Helgrind"
 valgrind \
   --tool=helgrind \
+  --suppressions="${ROOT_DIR}/helgrind.supp" \
   --fair-sched=yes \
   --history-level=full \
   --read-var-info=yes \

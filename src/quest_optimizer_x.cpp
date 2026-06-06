@@ -7,7 +7,14 @@
 #include <queue>
 #include <utility>
 
-int remain_quests(const std::vector<QuestLine>::const_iterator first, const std::vector<QuestLine>::const_iterator last) {
+void atomic_fetch_min(std::atomic<unsigned>& value, const unsigned candidate) {
+    auto current = value.load(std::memory_order_relaxed);
+    while (candidate < current &&
+           !value.compare_exchange_weak(current, candidate, std::memory_order_relaxed, std::memory_order_relaxed)) {}
+}
+
+int remain_quests(const std::vector<QuestLine>::const_iterator first,
+    const std::vector<QuestLine>::const_iterator last) {
     return std::accumulate(first, last, 0,
         [](const int acc, const QuestLine& line) { return acc + static_cast<int>(line.vertexes.size()); });
 }
@@ -67,8 +74,7 @@ bool QuestOptimizer::update_state(PathState& current_state) {
         for (size_t quest_id = 0; quest_id < graph_data.quest_lines.size(); ++quest_id) {
             const auto& quest_line = graph_data.quest_lines[quest_id];
             auto& position = current_state.quest_positions[quest_id];
-            if (position < quest_line.vertexes.size() &&
-                quest_line.vertexes[position] == current_state.current_index) {
+            if (position < quest_line.vertexes.size() && quest_line.vertexes[position] == current_state.current_index) {
                 ++position;
                 --current_state.remaining_quest_count;
             }
@@ -93,8 +99,7 @@ bool QuestOptimizer::update_state(PathState& current_state) {
                     const auto worst_it = std::prev(queue.end());
                     const int rq_new = new_state.remaining_quest_count;
                     const int rq_worst = worst_it->remaining_quest_count;
-                    if (rq_new < rq_worst ||
-                        (rq_new == rq_worst && new_state.path.length < worst_it->path.length)) {
+                    if (rq_new < rq_worst || (rq_new == rq_worst && new_state.path.length < worst_it->path.length)) {
                         queue.erase(worst_it);
                         queue.insert(std::move(new_state));
                         if (sleeping_threads > 0)
@@ -123,8 +128,7 @@ bool QuestOptimizer::update_state_fast_travel(PathState& current_state) {
         for (size_t quest_id = 0; quest_id < graph_data.quest_lines.size(); ++quest_id) {
             const auto& quest_line = graph_data.quest_lines[quest_id];
             auto& position = current_state.quest_positions[quest_id];
-            if (position < quest_line.vertexes.size() &&
-                quest_line.vertexes[position] == current_state.current_index) {
+            if (position < quest_line.vertexes.size() && quest_line.vertexes[position] == current_state.current_index) {
                 ++position;
                 --current_state.remaining_quest_count;
             }
@@ -185,8 +189,7 @@ void QuestOptimizer::optimize_cycle() {
 
         if (!local_found && found_best_paths.load(std::memory_order::acquire) < depth_of_search) {
             const unsigned remaining = current_state.remaining_quest_count;
-            const unsigned prev_min = minimum_quest_count.load(std::memory_order::acquire);
-            minimum_quest_count.store(std::min(prev_min, remaining), std::memory_order::release);
+            atomic_fetch_min(minimum_quest_count, remaining);
         }
         if (found_best_paths.load(std::memory_order::acquire) >= depth_of_search) {
             stop_event.store(true, std::memory_order::release);
@@ -254,9 +257,8 @@ bool print_quests_on_path(const Path& path, const std::vector<QuestLine>& quest_
     const std::vector<std::string>& vertex_names, const bool use_vertex_names, const bool use_quest_names) {
     std::cout << path.length << std::endl;
     std::vector<size_t> quest_positions(quest_lines.size(), 0);
-    size_t completed_quests = std::ranges::count_if(quest_lines, [](const QuestLine& quest_line) {
-        return quest_line.vertexes.empty();
-    });
+    size_t completed_quests =
+        std::ranges::count_if(quest_lines, [](const QuestLine& quest_line) { return quest_line.vertexes.empty(); });
 
     for (const int vertex_index : path.vertexes) {
         if (use_vertex_names && std::cmp_less(vertex_index, vertex_names.size()))

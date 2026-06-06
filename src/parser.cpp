@@ -8,7 +8,6 @@
 
 namespace fs = std::filesystem;
 
-namespace {
 void sort_and_merge_edges(std::vector<Edge>& edges) {
     std::ranges::stable_sort(edges, {}, &Edge::to);
     size_t write_index = 0;
@@ -20,7 +19,6 @@ void sort_and_merge_edges(std::vector<Edge>& edges) {
         }
     }
     edges.resize(write_index);
-}
 }
 
 std::vector<std::string> Parser::lines{};

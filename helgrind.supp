@@ -1,0 +1,21 @@
+{
+   qox_lock_free_atomic_load
+   Helgrind:Race
+   fun:load
+   ...
+   fun:_ZN14QuestOptimizer*
+}
+{
+   qox_lock_free_atomic_store
+   Helgrind:Race
+   fun:store
+   ...
+   fun:_ZN14QuestOptimizer*
+}
+{
+   qox_logger_lock_free_atomic_load
+   Helgrind:Race
+   fun:load
+   ...
+   fun:_Z18logger_thread_func*
+}

@@ -6,5 +6,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 
 file(GLOB SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
-include_directories(${CMAKE_SOURCE_DIR}/include)
 add_executable(quest_optimizer_x ${SOURCES})
+target_include_directories(quest_optimizer_x PUBLIC ${CMAKE_SOURCE_DIR}/include)

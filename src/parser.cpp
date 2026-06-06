@@ -8,6 +8,21 @@
 
 namespace fs = std::filesystem;
 
+namespace {
+void sort_and_merge_edges(std::vector<Edge>& edges) {
+    std::ranges::stable_sort(edges, {}, &Edge::to);
+    size_t write_index = 0;
+    for (const auto& edge : edges) {
+        if (write_index > 0 && edges[write_index - 1].to == edge.to) {
+            edges[write_index - 1].weight = edge.weight;
+        } else {
+            edges[write_index++] = edge;
+        }
+    }
+    edges.resize(write_index);
+}
+}
+
 std::vector<std::string> Parser::lines{};
 LineIter Parser::current_line{};
 GraphData Parser::graph_data{};
@@ -82,8 +97,7 @@ void Parser::parse_vertex_count() {
         throw InvalidFormat("Invalid Format Of <Start> statement");
     }
     graph_data.vertex_names.resize(graph_data.vertex_count);
-    graph_data.adj_list = std::vector(graph_data.vertex_count,
-        std::vector(graph_data.vertex_count, std::numeric_limits<double>::infinity()));
+    graph_data.adj_list.assign(graph_data.vertex_count, {});
 }
 
 void Parser::parse_vertexes() {
@@ -135,10 +149,13 @@ void Parser::parse_edges() {
         if (edge < 0) {
             throw InvalidFormat("Edge length is less then 0");
         }
-        graph_data.adj_list[first][second] = edge;
+        graph_data.adj_list[first].push_back({second, edge});
         if (graph_data.bidirectional) {
-            graph_data.adj_list[second][first] = edge;
+            graph_data.adj_list[second].push_back({first, edge});
         }
+    }
+    for (auto& edges : graph_data.adj_list) {
+        sort_and_merge_edges(edges);
     }
     --current_line;
 }

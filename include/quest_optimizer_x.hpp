@@ -33,13 +33,12 @@ bool print_quests_on_path(const Path& path, const std::vector<QuestLine>& quest_
 struct PathState {
     int current_index;
     Path path;
-    std::vector<QuestLine> quests;
+    std::vector<size_t> quest_positions;
+    int remaining_quest_count;
 
     bool operator<(const PathState& other) const {
-        const auto first = remain_quests(quests.begin(), quests.end());
-        const auto second = remain_quests(other.quests.begin(), other.quests.end());
-        if (first != second) {
-            return first < second;
+        if (remaining_quest_count != other.remaining_quest_count) {
+            return remaining_quest_count < other.remaining_quest_count;
         }
         if (path.length != other.path.length)
             return path.length < other.path.length;
@@ -58,7 +57,8 @@ public:
           error_afford(error_afford),
           depth_of_search(depth_of_search),
           log_interval_seconds(log_interval_seconds) {
-        minimum_quest_count = remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end());
+        total_quest_count = remain_quests(graph_data.quest_lines.begin(), graph_data.quest_lines.end());
+        minimum_quest_count = total_quest_count;
         std::ranges::for_each(std::views::iota(0, graph_data.vertex_count),
             [&](const int i) { best_path_for_start[i] = Path({}, std::numeric_limits<double>::infinity()); });
     };
@@ -74,6 +74,7 @@ private:
     const double error_afford;
     const unsigned depth_of_search;
     const float log_interval_seconds;
+    int total_quest_count;
 
     std::atomic<unsigned> found_best_paths = 0;
     std::atomic<unsigned> minimum_quest_count;

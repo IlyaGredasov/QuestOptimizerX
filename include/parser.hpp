@@ -14,22 +14,15 @@ struct QuestLine {
     int id{};
     std::string name;
     std::vector<int> vertexes;
-    size_t next_vertex = 0;
+};
 
-    [[nodiscard]] bool empty() const { return next_vertex >= vertexes.size(); }
-
-    [[nodiscard]] int front() const { return vertexes[next_vertex]; }
-
-    void pop_front() {
-        if (!empty())
-            ++next_vertex;
-    }
-
-    [[nodiscard]] size_t remaining() const { return vertexes.size() - next_vertex; }
+struct Edge {
+    int to;
+    double weight;
 };
 
 struct GraphData {
-    std::vector<std::vector<double>> adj_list;
+    std::vector<std::vector<Edge>> adj_list;
     bool fast_travel;
     bool weighted;
     bool bidirectional;

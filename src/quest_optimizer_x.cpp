@@ -1,5 +1,3 @@
-#include "quest_optimizer_x.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -7,21 +5,51 @@
 #include <queue>
 #include <utility>
 
+#include "quest_optimizer_x.hpp"
+
+namespace {
 void atomic_fetch_min(std::atomic<unsigned>& value, const unsigned candidate) {
     auto current = value.load(std::memory_order_relaxed);
     while (candidate < current &&
            !value.compare_exchange_weak(current, candidate, std::memory_order_relaxed, std::memory_order_relaxed)) {}
 }
+void logger_thread_func(
+    const std::atomic<unsigned>& found_best_paths,
+    const std::atomic<unsigned>& minimum_quest_count,
+    const std::atomic<bool>& stop_event,
+    const std::pmr::set<PathState>& queue,
+    std::mutex& queue_mutex,
+    const float interval_seconds
+) {
+    while (!stop_event.load(std::memory_order::acquire)) {
+        std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
+        size_t queue_size = 0;
+        {
+            const std::scoped_lock lock(queue_mutex);
+            queue_size = queue.size();
+        }
+        std::cout << "[Logger Thread] "
+                  << "found_best_paths: " << found_best_paths.load(std::memory_order::acquire)
+                  << " minimum_quest_count: " << minimum_quest_count.load(std::memory_order::acquire)
+                  << " queue_size: " << queue_size << '\n';
+    }
+}
+} // namespace
 
-int remain_quests(const std::vector<QuestLine>::const_iterator first,
-    const std::vector<QuestLine>::const_iterator last) {
-    return std::accumulate(first, last, 0,
-        [](const int acc, const QuestLine& line) { return acc + static_cast<int>(line.vertexes.size()); });
+int remain_quests(
+    const std::vector<QuestLine>::const_iterator first,
+    const std::vector<QuestLine>::const_iterator last
+) {
+    return std::accumulate(first, last, 0, [](const int acc, const QuestLine& line) {
+        return acc + static_cast<int>(line.vertexes.size());
+    });
 }
 
 std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) const {
     std::unordered_map<int, Path> best_paths;
-    std::priority_queue<std::pair<double, std::vector<int>>, std::vector<std::pair<double, std::vector<int>>>,
+    std::priority_queue<
+        std::pair<double, std::vector<int>>,
+        std::vector<std::pair<double, std::vector<int>>>,
         std::greater<>>
         pq;
     pq.emplace(0.0, std::vector{start});
@@ -43,23 +71,6 @@ std::unordered_map<int, Path> QuestOptimizer::dijkstra_from(const int start) con
         }
     }
     return best_paths;
-}
-
-void logger_thread_func(const std::atomic<unsigned>& found_best_paths, const std::atomic<unsigned>& minimum_quest_count,
-    const std::atomic<bool>& stop_event, const std::pmr::set<PathState>& queue, std::mutex& queue_mutex,
-    const float interval_seconds) {
-    while (!stop_event.load(std::memory_order::acquire)) {
-        std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
-        size_t queue_size = 0;
-        {
-            const std::scoped_lock lock(queue_mutex);
-            queue_size = queue.size();
-        }
-        std::cout << "[Logger Thread] "
-                  << "found_best_paths: " << found_best_paths.load(std::memory_order::acquire)
-                  << " minimum_quest_count: " << minimum_quest_count.load(std::memory_order::acquire)
-                  << " queue_size: " << queue_size << std::endl;
-    }
 }
 
 bool QuestOptimizer::update_state(PathState& current_state) {
@@ -207,8 +218,15 @@ void QuestOptimizer::optimize() {
     threads.reserve(num_threads);
     std::thread logger_thread{};
     if (std::abs(log_interval_seconds) >= std::numeric_limits<float>::epsilon()) {
-        logger_thread = std::thread(logger_thread_func, std::ref(found_best_paths), std::ref(minimum_quest_count),
-            std::ref(stop_event), std::ref(queue), std::ref(queue_mutex), log_interval_seconds);
+        logger_thread = std::thread(
+            logger_thread_func,
+            std::ref(found_best_paths),
+            std::ref(minimum_quest_count),
+            std::ref(stop_event),
+            std::ref(queue),
+            std::ref(queue_mutex),
+            log_interval_seconds
+        );
     }
     for (unsigned i = 0; i < num_threads; ++i) {
         threads.emplace_back(&QuestOptimizer::optimize_cycle, this);
@@ -253,8 +271,13 @@ void QuestOptimizer::optimize() {
 
 Path QuestOptimizer::get_best_path() const { return best_path; }
 
-bool print_quests_on_path(const Path& path, const std::vector<QuestLine>& quest_lines,
-    const std::vector<std::string>& vertex_names, const bool use_vertex_names, const bool use_quest_names) {
+bool print_quests_on_path(
+    const Path& path,
+    const std::vector<QuestLine>& quest_lines,
+    const std::vector<std::string>& vertex_names,
+    const bool use_vertex_names,
+    const bool use_quest_names
+) {
     std::cout << path.length << std::endl;
     std::vector<size_t> quest_positions(quest_lines.size(), 0);
     size_t completed_quests =

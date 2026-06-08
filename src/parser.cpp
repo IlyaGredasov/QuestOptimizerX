@@ -1,13 +1,14 @@
-#include "parser.hpp"
-
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
+#include "parser.hpp"
+
 namespace fs = std::filesystem;
 
+namespace {
 void sort_and_merge_edges(std::vector<Edge>& edges) {
     std::ranges::stable_sort(edges, {}, &Edge::to);
     size_t write_index = 0;
@@ -21,6 +22,16 @@ void sort_and_merge_edges(std::vector<Edge>& edges) {
     edges.resize(write_index);
 }
 
+std::vector<std::string> extract_words(const std::string& input) {
+    std::vector<std::string> words;
+    std::istringstream stream(input);
+    std::string word;
+    while (stream >> word) {
+        words.push_back(word);
+    }
+    return words;
+}
+} // namespace
 std::vector<std::string> Parser::lines{};
 LineIter Parser::current_line{};
 GraphData Parser::graph_data{};
@@ -38,16 +49,6 @@ void Parser::read_file(const std::string& file_path) {
             raw.pop_back();
         lines.push_back(raw);
     }
-}
-
-std::vector<std::string> extract_words(const std::string& input) {
-    std::vector<std::string> words;
-    std::istringstream stream(input);
-    std::string word;
-    while (stream >> word) {
-        words.push_back(word);
-    }
-    return words;
 }
 
 void Parser::parse_fast_travel() {
@@ -195,7 +196,6 @@ void Parser::parse_start() {
     }
 }
 
-// clang-format off
 const std::unordered_map<std::string, void (*)()> Parser::string_to_parse_func = {
     {"FastTravel:", parse_fast_travel},
     {"Bidirectional:", parse_bidirectional},
@@ -204,8 +204,8 @@ const std::unordered_map<std::string, void (*)()> Parser::string_to_parse_func =
     {"Vertexes:", parse_vertexes},
     {"Edges:", parse_edges},
     {"QuestLines:", parse_quest_lines},
-    {"Start:", parse_start}};
-// clang-format on
+    {"Start:", parse_start}
+};
 
 GraphData Parser::parse_file(const std::string& file_path) {
     read_file(file_path);

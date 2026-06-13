@@ -92,7 +92,7 @@ private:
     std::unordered_map<int, Path> best_path_for_start;
     Path best_path = {.vertexes = {}, .length = std::numeric_limits<double>::infinity()};
 
-    std::pmr::synchronized_pool_resource queue_pool{};
+    std::pmr::unsynchronized_pool_resource queue_pool{};
     std::pmr::set<PathState> queue{&queue_pool};
     std::condition_variable cv_queue;
     unsigned sleeping_threads = 0;

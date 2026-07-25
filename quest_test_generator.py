@@ -1,6 +1,6 @@
+import argparse
 from os import linesep
 from random import randint, random, sample
-import argparse
 
 parser = argparse.ArgumentParser(description="Quest test generator")
 
@@ -54,10 +54,10 @@ with open(args.o, "w", newline="") as f:
     edges = sample(all_edges, int(args.d * len(all_edges)))
 
     f.write(f"Edges:{linesep}")
-    for edge in edges:
-        f.write(
-            f"\t{edge[0]} {edge[1]} {f'{100 * random():.2f}' if args.w else ''}{linesep}"
-        )
+    f.writelines(
+        f"\t{edge[0]} {edge[1]} {f'{100 * random():.2f}' if args.w else ''}{linesep}"
+        for edge in edges
+    )
 
     f.write(f"QuestLines:{linesep}")
     quest_lines = []

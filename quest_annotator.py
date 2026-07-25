@@ -1,7 +1,8 @@
-import cv2
-import math
 import argparse
+import math
 from pathlib import Path
+
+import cv2
 from ultralytics import YOLO
 
 rectangles = []
@@ -22,7 +23,7 @@ def point_in_rect(x, y, rect):
 
 
 def mouse_callback(event, x, y, flags, param):
-    global drawing, start_point, current_rect, rectangles
+    global drawing, start_point, current_rect
 
     x = int(x / scale)
     y = int(y / scale)
@@ -69,7 +70,6 @@ def draw_all(img, annotate_ids=False):
 
 
 def generate_outputs(save_dir: Path, base_name: str, alpha: float):
-    h, w = original_image.shape[:2]
     centers = []
 
     for rect in rectangles:
@@ -119,7 +119,6 @@ def generate_outputs(save_dir: Path, base_name: str, alpha: float):
 
 
 def run_detection():
-    global rectangles, original_image
     print("Running YOLOv8 detection...")
     model = YOLO("poi_detector.pt")
     results = model(original_image, imgsz=640, verbose=False)[0]

@@ -1,8 +1,18 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "opencv-python==4.11.0.86",
+#   "PyYAML==6.0.3",
+#   "ultralytics==8.3.152",
+# ]
+# ///
+
 import argparse
 import math
 from pathlib import Path
 
 import cv2
+import yaml
 from ultralytics import YOLO
 
 rectangles = []
@@ -79,6 +89,10 @@ def generate_outputs(save_dir: Path, base_name: str, alpha: float):
         centers.append((cx, cy))
 
     n = len(centers)
+    if n == 0:
+        print("No annotated vertices; nothing was saved")
+        return
+
     distances = [[0.0] * n for _ in range(n)]
     for i in range(n):
         for j in range(n):
@@ -89,27 +103,31 @@ def generate_outputs(save_dir: Path, base_name: str, alpha: float):
 
     threshold_edges = set()
     for i in range(n):
+        if n < 2:
+            break
         d_min = min(distances[i][j] for j in range(n) if i != j)
         for j in range(n):
             if i < j and distances[i][j] <= alpha * d_min:
                 threshold_edges.add((i, j, distances[i][j]))
 
-    lines = [
-        "FastTravel:\n\tFalse",
-        "Bidirectional:\n\tTrue",
-        "Weighted:\n\tTrue",
-        f"VertexCount:\n\t{n}",
-        "Edges:",
-    ]
-    for i, j, dist in sorted(threshold_edges):
-        lines.append(f"\t{i} {j} {dist:.2f}")
+    graph = {
+        "fast_travel": False,
+        "bidirectional": True,
+        "weighted": True,
+        "vertex_count": n,
+        "edges": [
+            {"from": i, "to": j, "weight": round(distance, 2)}
+            for i, j, distance in sorted(threshold_edges)
+        ],
+        "quest_lines": [
+            {"id": quest_id, "vertices": [quest_id]} for quest_id in range(n)
+        ],
+    }
 
-    lines.append("QuestLines:")
-    for i in range(n):
-        lines.append(f"\t{i}")
-
-    graph_file = save_dir / f"{base_name}_graph.txt"
-    graph_file.write_text("\n".join(lines))
+    graph_file = save_dir / f"{base_name}_graph.yaml"
+    graph_file.write_text(
+        yaml.safe_dump(graph, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
 
     labeled = original_image.copy()
     draw_all(labeled, annotate_ids=True)

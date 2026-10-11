@@ -1,79 +1,108 @@
-# Gist
-Imagine, you are playing in enormous RPG game with huge map
-and big amount of quests. You are "100%" hunter,so you have
-read all materials about game and know how pass it, but you still need an optimal route. This app can help you.
+# QuestOptimizerX
 
-### Example of usage
-Use ```quest_test_generator``` to make example 
+QuestOptimizerX finds an efficient route through ordered quest objectives on a
+weighted or unweighted graph.
+
+## Build
+
+The C++ application requires CLI11 and yaml-cpp. On Ubuntu/WSL they can be
+installed with:
+
 ```bash
-  -h, --help  show this help message and exit
-  -o O        Output file
-  -f          Do we use fast travel?
-  -b          Is graph bidirectional?
-  -w          Is graph weighted?
-  -v V        Number of vertexes
-  -vn         Do vertexes have names?
-  -d D        Density of graph (count of edges)
-  -q Q        Number of quest lines
-  -ql QL      Maximum length of quest line
-  -qn         Do quest lines have names?
-  -s S        Start vertex
-```
-```quest_test_generator.exe -q 20 -v 20 -d 0.3 -w -o example.txt```:
-```txt
-FastTravel:
-	False
-Bidirectional:
-	False
-Weighted:
-	True
-VertexCount:
-	20
-Edges:
-	9 5 38.10
-	7 13 31.62
-	...
-	15 3 38.82
-	19 10 23.14
-QuestLines:
-	7 12 7 1 6 0 1
-	2 19 11 6 11 17 13
-	...
-	11 8
-```
-That means:
-- You can't use fast travel in your game
-- Graph is directed (you can't go backward)
-- Edges are weighted
-- There are 20 vertexes and pack of edges with its
-- There are different quest lines, e.g. ```7 12 7 1 6 0 1``` means that you have to 
-visit 7th vertex, 12th vertex ... (exactly in such order) to complete this quest
-
-Now let's try to find best
-
-run ```cmake-build-release-mingw\bin\QuestOptimizerX.exe --file "path\to\example.txt" --num_threads 12 --max_queue_size 10000 --error_afford 1.1 --depth_of_search 200 --log_interval_seconds 0.1```
-
-### Options:
-- ```num_threads``` - count of using threads
-- ```max_queue_size``` - size of optimizer's queue (bounded by ~600000 for 16GB RAM, use bigger queue for better search)
-- ```error_afford``` - heuristic for optimizer (use 1.00-1.05 for the fastest search, 1.06-1.2 for optimal search, bigger value can make result worse)
-- ```depth_of_search``` - count of path that optimizer must find before choose the best one
-- ```log_interval_seconds``` - show logging info, can be disabled by setting this option 0
-
-### Output:
-```
-2795.11
-0:3 10
-4:3 15
-5:4
-7:0
-1:15
-2:1 16
-8:
-3:7
+./install_cpp_requirements.sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+cmake --build build -j
 ```
 
-That means:
-- Optimizer has found path with 2795.11 total length
-- To pass it you must go to the vertex 0 and make progress for 3rd and 10th quests,
-after that go to the 4th vertex and make progress for 3rd and 15th quests and so on...
+## Generate an input file
+
+The generator is a self-contained `uv` script; `uv` installs its pinned PyYAML
+dependency automatically:
+
+```bash
+uv run quest_test_generator.py -q 20 -v 20 -d 0.3 -w -o example.yaml
+```
+
+Useful generator options:
+
+```text
+-o FILE   output YAML file
+-f        enable fast travel
+-b        make the graph bidirectional
+-w        generate weighted edges
+-v N      number of vertices
+-vn       add names to a random subset of vertices
+-d D      edge density in the range [0, 1]
+-q N      number of quest lines
+-ql N     maximum quest line length
+-qn       add names to a random subset of quest lines
+-s N      fixed start vertex
+```
+
+The generated YAML has this shape:
+
+```yaml
+fast_travel: false
+bidirectional: false
+weighted: true
+vertex_count: 4
+start: 0
+vertices:
+  - id: 0
+    name: village
+  - id: 3
+    name: castle
+edges:
+  - from: 0
+    to: 1
+    weight: 12.5
+  - from: 1
+    to: 3
+    weight: 8.25
+quest_lines:
+  - id: 0
+    name: main_quest
+    vertices: [0, 1, 3]
+  - id: 1
+    vertices: [2, 3]
+```
+
+`start`, `vertices`, quest `id`, and quest `name` are optional. Edge `weight`
+is required exactly when `weighted` is `true`. Unnamed vertices and quests get
+the names `vertex_N` and `quest_N`.
+
+## Run
+
+Only `--file` is required; all search options have defaults:
+
+```bash
+./build/quest_optimizer_x \
+  --file example.yaml \
+  --num-threads 12 \
+  --max-queue-size 10000 \
+  --error-afford 1.1 \
+  --depth-of-search 200 \
+  --log-interval-seconds 0.1 \
+  --enable-vertex-names \
+  --enable-quest-line-names
+```
+
+The underscore spellings used by older commands, such as `--num_threads`, are
+kept as aliases. Run `./build/quest_optimizer_x --help` for the complete CLI11
+help output.
+
+- `num-threads` controls the number of optimizer threads.
+- `max-queue-size` bounds the search queue.
+- `error-afford` controls heuristic pruning.
+- `depth-of-search` is the number of complete paths to find before selecting
+  the best one.
+- `log-interval-seconds` controls periodic logging; zero disables it.
+
+## Annotator
+
+The image annotator is also a self-contained `uv` script and writes
+`<image>_graph.yaml` next to the labeled image:
+
+```bash
+uv run quest_annotator.py path/to/map.png
+```

@@ -1,9 +1,10 @@
+#!/usr/bin/env zsh
 ROOT_DIR="$(pwd)"
 BUILD_DIR="${ROOT_DIR}/thread-san-build"
 
 BIN_NAME="quest_optimizer_x"
 BIN="${BUILD_DIR}/${BIN_NAME}"
-INPUT_FILE="${ROOT_DIR}/example.txt"
+INPUT_FILE="${INPUT_FILE:-${ROOT_DIR}/example.yaml}"
 
 run_args=(
   --file "${INPUT_FILE}"
@@ -12,8 +13,6 @@ run_args=(
   --error_afford 1.2
   --depth_of_search 50
   --log_interval_seconds 1
-  --disable_quest_line_names
-  --disable_vertex_names
 )
 
 echo "[1/2] Configure+build ThreadSanitizer"

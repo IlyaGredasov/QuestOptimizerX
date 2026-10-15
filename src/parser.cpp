@@ -6,8 +6,9 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "parser.hpp"
+#include "qo/parser.hpp"
 
+namespace qo {
 namespace {
     template <typename Value>
     Value required_value(const YAML::Node& node, const char* key) {
@@ -147,3 +148,4 @@ GraphData Parser::parse_file(const std::string& file_path) {
     }
 }
 
+} // namespace qo

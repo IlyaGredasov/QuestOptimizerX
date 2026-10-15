@@ -1,21 +1,24 @@
-#!/usr/bin/env zsh
-ROOT_DIR="$(pwd)"
-BUILD_DIR="${ROOT_DIR}/valgrind-clang-build"
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+ROOT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
+BUILD_DIR="${ROOT_DIR}/valgrind-build"
 
 BIN_NAME="quest_optimizer_x"
 BIN="${BUILD_DIR}/${BIN_NAME}"
-INPUT_FILE="${INPUT_FILE:-${ROOT_DIR}/example.yaml}"
+INPUT_FILE="${INPUT_FILE:-${SCRIPT_DIR}/test_valgrind.yaml}"
 
 run_args=(
   --file "${INPUT_FILE}"
-  --num_threads "${NUM_THREADS:-12}"
-  --max_queue_size "${MAX_QUEUE_SIZE:-100000}"
-  --error_afford "${ERROR_AFFORD:-1.2}"
-  --depth_of_search "${DEPTH_OF_SEARCH:-50}"
-  --log_interval_seconds "${LOG_INTERVAL_SECONDS:-1}"
+  --num_threads 12
+  --max_queue_size 1000
+  --error_afford 1.2
+  --depth_of_search 50
+  --log_interval_seconds 1
 )
 
-echo "[1/2] Configure+build Debug (valgrind)"
+echo "[1/2] Configure+build Valgrind"
 cmake -S "${ROOT_DIR}" -B "${BUILD_DIR}" -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \
   -DCMAKE_CXX_COMPILER=clang++
@@ -29,3 +32,5 @@ valgrind \
   --history-level=full \
   --error-exitcode=1 \
   "${BIN}" "${run_args[@]}"
+
+rm -rf -- "${BUILD_DIR}"

@@ -12,8 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "parser.hpp"
+#include "qo/parser.hpp"
 
+namespace qo {
 struct Path {
     std::vector<int> vertexes;
     double length = 0.0;
@@ -92,7 +93,7 @@ private:
     std::unordered_map<int, Path> best_path_for_start;
     Path best_path = {.vertexes = {}, .length = std::numeric_limits<double>::infinity()};
 
-    std::pmr::synchronized_pool_resource queue_pool{};
+    std::pmr::synchronized_pool_resource queue_pool;
     std::pmr::set<PathState> queue{&queue_pool};
     std::condition_variable cv_queue;
     unsigned sleeping_threads = 0;
@@ -106,3 +107,4 @@ private:
 
     void optimize_cycle();
 };
+} // namespace qo

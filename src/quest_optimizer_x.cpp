@@ -5,35 +5,37 @@
 #include <queue>
 #include <utility>
 
-#include "quest_optimizer_x.hpp"
+#include "qo/quest_optimizer_x.hpp"
 
+namespace qo {
 namespace {
-void atomic_fetch_min(std::atomic<unsigned>& value, const unsigned candidate) {
-    auto current = value.load(std::memory_order_relaxed);
-    while (candidate < current &&
-           !value.compare_exchange_weak(current, candidate, std::memory_order_relaxed, std::memory_order_relaxed)) {}
-}
-void logger_thread_func(
-    const std::atomic<unsigned>& found_best_paths,
-    const std::atomic<unsigned>& minimum_quest_count,
-    const std::atomic<bool>& stop_event,
-    const std::pmr::set<PathState>& queue,
-    std::mutex& queue_mutex,
-    const float interval_seconds
-) {
-    while (!stop_event.load(std::memory_order::acquire)) {
-        std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
-        size_t queue_size = 0;
-        {
-            const std::scoped_lock lock(queue_mutex);
-            queue_size = queue.size();
+    void atomic_fetch_min(std::atomic<unsigned>& value, const unsigned candidate) {
+        auto current = value.load(std::memory_order_relaxed);
+        while (candidate < current &&
+               !value.compare_exchange_weak(current, candidate, std::memory_order_relaxed, std::memory_order_relaxed)) {
         }
-        std::cout << "[Logger Thread] "
-                  << "found_best_paths: " << found_best_paths.load(std::memory_order::acquire)
-                  << " minimum_quest_count: " << minimum_quest_count.load(std::memory_order::acquire)
-                  << " queue_size: " << queue_size << '\n';
     }
-}
+    void logger_thread_func(
+        const std::atomic<unsigned>& found_best_paths,
+        const std::atomic<unsigned>& minimum_quest_count,
+        const std::atomic<bool>& stop_event,
+        const std::pmr::set<PathState>& queue,
+        std::mutex& queue_mutex,
+        const float interval_seconds
+    ) {
+        while (!stop_event.load(std::memory_order::acquire)) {
+            std::this_thread::sleep_for(std::chrono::duration<double>(interval_seconds));
+            size_t queue_size = 0;
+            {
+                const std::scoped_lock lock(queue_mutex);
+                queue_size = queue.size();
+            }
+            std::cout << "[Logger Thread] "
+                      << "found_best_paths: " << found_best_paths.load(std::memory_order::acquire)
+                      << " minimum_quest_count: " << minimum_quest_count.load(std::memory_order::acquire)
+                      << " queue_size: " << queue_size << '\n';
+        }
+    }
 } // namespace
 
 int remain_quests(
@@ -212,7 +214,7 @@ void QuestOptimizer::optimize_cycle() {
 void QuestOptimizer::optimize() {
     const std::vector<size_t> initial_quest_positions(graph_data.quest_lines.size(), 0);
     for (int i = 0; i < graph_data.vertex_count; ++i) {
-        queue.insert(PathState(i, Path{{}, 0.0}, initial_quest_positions, total_quest_count));
+        queue.insert(PathState(i, Path{.vertexes = {}, .length = 0.0}, initial_quest_positions, total_quest_count));
     }
     auto threads = std::vector<std::thread>{};
     threads.reserve(num_threads);
@@ -248,10 +250,10 @@ void QuestOptimizer::optimize() {
         if (it != best_path_for_start.end() && std::isfinite(it->second.length)) {
             best_path = it->second;
         } else {
-            std::cerr << "[ERROR] No valid path found in best_path_for_start." << std::endl;
+            std::cerr << "[ERROR] No valid path found in best_path_for_start." << '\n';
         }
     } else {
-        std::cout << "Dijkstra optimization" << std::endl;
+        std::cout << "Dijkstra optimization" << '\n';
         const auto start_paths = dijkstra_from(graph_data.start_index);
         best_path = Path({}, std::numeric_limits<double>::infinity());
         for (const auto& [via_vertex, coverage_path] : best_path_for_start) {
@@ -278,7 +280,7 @@ bool print_quests_on_path(
     const bool use_vertex_names,
     const bool use_quest_names
 ) {
-    std::cout << path.length << std::endl;
+    std::cout << path.length << '\n';
     std::vector<size_t> quest_positions(quest_lines.size(), 0);
     size_t completed_quests =
         std::ranges::count_if(quest_lines, [](const QuestLine& quest_line) { return quest_line.vertexes.empty(); });
@@ -304,7 +306,9 @@ bool print_quests_on_path(
             if (position == quest_line.vertexes.size())
                 ++completed_quests;
         }
-        std::cout << std::endl;
+        std::cout << '\n';
     }
     return completed_quests == quest_lines.size();
 }
+
+} // namespace qo

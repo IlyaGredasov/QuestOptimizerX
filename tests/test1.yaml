@@ -1,0 +1,40 @@
+# Линейный граф: 0->1->2->...->9
+# Один квест, охватывающий все вершины по порядку
+vertex_count: 10
+fast_travel: false
+weighted: true
+bidirectional: false
+
+edges:
+  - from: 0
+    to: 1
+    weight: 1.0
+  - from: 1
+    to: 2
+    weight: 1.0
+  - from: 2
+    to: 3
+    weight: 1.0
+  - from: 3
+    to: 4
+    weight: 1.0
+  - from: 4
+    to: 5
+    weight: 1.0
+  - from: 5
+    to: 6
+    weight: 1.0
+  - from: 6
+    to: 7
+    weight: 1.0
+  - from: 7
+    to: 8
+    weight: 1.0
+  - from: 8
+    to: 9
+    weight: 1.0
+
+quest_lines:
+  - id: 0
+    name: "MainQuest"
+    vertices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]

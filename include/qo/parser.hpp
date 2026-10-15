@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+namespace qo {
+
 class InvalidFormat final : public std::runtime_error {
 public:
     explicit InvalidFormat(const std::string& msg) : std::runtime_error(msg) {}
@@ -15,7 +17,7 @@ struct QuestLine {
     std::vector<int> vertexes;
 
     QuestLine() = default;
-    QuestLine(const int id_value, const std::string& name_value) : id(id_value), name(name_value) {}
+    QuestLine(const int id_value, std::string name_value) : id(id_value), name(std::move(name_value)) {}
 };
 
 struct Edge {
@@ -38,3 +40,5 @@ class Parser final {
 public:
     static GraphData parse_file(const std::string& file_path);
 };
+
+} // namespace qo

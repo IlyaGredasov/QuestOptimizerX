@@ -1,0 +1,58 @@
+# Граф с несколькими путями между вершинами квеста, разная стоимость рёбер
+# Квест: [0, 4, 8] — нужно выбрать оптимальную последовательность
+
+vertex_count: 13
+fast_travel: false
+weighted: true
+bidirectional: false
+
+edges:
+  # Путь 0->2->4 (стоимость 5.0)
+  - from: 0
+    to: 1
+    weight: 4.0
+  - from: 1
+    to: 2
+    weight: 1.0
+  - from: 2
+    to: 3
+    weight: 1.0
+  - from: 3
+    to: 4
+    weight: 1.0
+  # Путь 0->2->5 (стоимость 6.0) — обходной путь
+  - from: 2
+    to: 5
+    weight: 4.0
+  - from: 5
+    to: 6
+    weight: 2.0
+  # Путь 4->7->8 (стоимость 3.0)
+  - from: 4
+    to: 7
+    weight: 1.0
+  - from: 7
+    to: 8
+    weight: 2.0
+  # Альтернативный путь 4->9->10->8 (стоимость 5.0)
+  - from: 4
+    to: 9
+    weight: 3.0
+  - from: 9
+    to: 10
+    weight: 2.0
+  - from: 10
+    to: 8
+    weight: 1.0
+  # Ветвление от 4: прямой путь через 11 (стоимость 4.0)
+  - from: 4
+    to: 11
+    weight: 2.0
+  - from: 11
+    to: 8
+    weight: 2.0
+
+quest_lines:
+  - id: 0
+    name: "MultiPath"
+    vertices: [0, 4, 8]

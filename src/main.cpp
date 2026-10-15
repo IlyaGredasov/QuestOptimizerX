@@ -5,7 +5,7 @@
 
 #include <CLI/CLI.hpp>
 
-#include "quest_optimizer_x.hpp"
+#include "qo/quest_optimizer_x.hpp"
 
 int main(const int argc, char** argv) {
     try {
@@ -51,17 +51,11 @@ int main(const int argc, char** argv) {
             app.parse(argc, argv);
         } catch (const CLI::ParseError& error) { return app.exit(error); }
 
-        const auto graph_data = Parser::parse_file(file);
-        QuestOptimizer optimizer(
-            graph_data,
-            num_threads,
-            max_queue_size,
-            error_afford,
-            depth_of_search,
-            log_interval_seconds
-        );
+        const auto graph_data = qo::Parser::parse_file(file);
+        qo::QuestOptimizer
+            optimizer(graph_data, num_threads, max_queue_size, error_afford, depth_of_search, log_interval_seconds);
         optimizer.optimize();
-        print_quests_on_path(
+        qo::print_quests_on_path(
             optimizer.get_best_path(),
             graph_data.quest_lines,
             graph_data.vertex_names,

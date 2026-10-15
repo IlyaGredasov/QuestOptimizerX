@@ -26,7 +26,6 @@ Testing/
 *.rsp
 *.d
 *.bin
-*.yaml
 
 # Python __pycache__ and compiled files
 .venv/
@@ -36,6 +35,5 @@ __pycache__/
 *.pyd
 
 # Ignore example and temp files if not source
-example.txt
 .vscode/
 .cache/

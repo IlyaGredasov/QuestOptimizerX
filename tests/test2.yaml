@@ -1,0 +1,37 @@
+# Граф с двумя путями от 0 до 6:
+#   путь A (длина 3.0): 0->1->2->6
+#   путь B (длина 4.0): 0->3->4->5->6
+# Ожидается выбор пути A как более короткого
+
+vertex_count: 10
+fast_travel: false
+weighted: true
+bidirectional: false
+
+edges:
+  - from: 0
+    to: 1
+    weight: 1.0
+  - from: 1
+    to: 2
+    weight: 1.0
+  - from: 2
+    to: 6
+    weight: 1.0
+  - from: 0
+    to: 3
+    weight: 1.0
+  - from: 3
+    to: 4
+    weight: 1.0
+  - from: 4
+    to: 5
+    weight: 1.0
+  - from: 5
+    to: 6
+    weight: 1.0
+
+quest_lines:
+  - id: 0
+    name: "ShortRoute"
+    vertices: [0, 2, 6]

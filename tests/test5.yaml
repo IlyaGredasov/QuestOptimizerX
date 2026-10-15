@@ -1,0 +1,48 @@
+# Граф с fast_travel: между вершинами одного квеста можно мгновенно перемещаться
+# Квест 1: [0, 3] — после посещении 0 teleport на 3 (или наоборот)
+# Квест 2: [6, 9] — аналогично
+
+vertex_count: 15
+fast_travel: true
+weighted: true
+bidirectional: false
+
+edges:
+  # Цепочка до первого квеста
+  - from: 0
+    to: 1
+    weight: 2.0
+  - from: 1
+    to: 2
+    weight: 2.0
+  - from: 2
+    to: 3
+    weight: 2.0
+  # Путь между квестами
+  - from: 3
+    to: 4
+    weight: 1.0
+  - from: 4
+    to: 5
+    weight: 1.0
+  - from: 5
+    to: 6
+    weight: 1.0
+  # Второй квест и далее
+  - from: 6
+    to: 7
+    weight: 3.0
+  - from: 7
+    to: 8
+    weight: 3.0
+  - from: 8
+    to: 9
+    weight: 3.0
+
+quest_lines:
+  - id: 0
+    name: "TeleportA"
+    vertices: [0, 3]
+  - id: 1
+    name: "TeleportB"
+    vertices: [6, 9]
